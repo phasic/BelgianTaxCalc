@@ -1,21 +1,15 @@
 import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
 
 // Project Pages URL: https://<user>.github.io/<repo>/
 const repo = "BelgianTaxCalc";
 
 export default defineConfig(({ command }) => ({
+  plugins: [react()],
+  root: "frontend",
   base: command === "build" ? `/${repo}/` : "/",
-  // GitHub Pages "Deploy from branch" only allows / (root) or /docs — not /dist
   build: {
-    outDir: "docs",
-  },
-  server: {
-    proxy: {
-      "/api/openfigi": {
-        target: "https://api.openfigi.com",
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/openfigi/, ""),
-      },
-    },
+    outDir: "../docs",
+    emptyOutDir: true,
   },
 }));
