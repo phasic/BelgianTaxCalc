@@ -12,6 +12,7 @@ import { db } from "./lib/firebase.js";
 import { fetchKnownInstruments, saveInstruments, resolveAndSaveNewTickers } from "./lib/firestoreInstruments.js";
 import { resolveTickerNames } from "./lib/openFigi.js";
 import { saveParsedCsvForUser, loadSavedHistoryParsed } from "./lib/firestoreTransactions.js";
+import { loadTobPaidKeys, saveTobPaidKeys } from "./lib/firestoreTobPaid.js";
 
 const TAB = {
   QUICK: "quick",
@@ -124,6 +125,33 @@ export default function App() {
       return next;
     });
   }, []);
+
+  // ── Load TOB paid keys from Firestore when the user signs in ──
+  // Merges cloud keys with any keys already in localStorage.
+  useEffect(() => {
+    if (!db || !user) return;
+    let cancelled = false;
+    loadTobPaidKeys(db, user.uid)
+      .then((cloudKeys) => {
+        if (cancelled || !cloudKeys.size) return;
+        setTobPaidKeys((prev) => {
+          const merged = new Set([...prev, ...cloudKeys]);
+          try { localStorage.setItem("tob_paid_v1", JSON.stringify([...merged])); } catch {}
+          return merged;
+        });
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [user]);
+
+  // ── Debounce-save tobPaidKeys to Firestore on every change ──
+  useEffect(() => {
+    if (!db || !user) return;
+    const t = setTimeout(() => {
+      saveTobPaidKeys(db, user.uid, tobPaidKeys).catch(() => {});
+    }, 400);
+    return () => clearTimeout(t);
+  }, [tobPaidKeys, user]);
 
   // ── Auto-sync CSV to Firestore whenever a new file is parsed ──
   // After saving, also silently refresh historyParsed so Quick TOB is always up to date.

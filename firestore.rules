@@ -30,5 +30,13 @@ service cloud.firestore {
         && request.auth.token.email != null
         && exists(/databases/$(database)/documents/allowlist/$(request.auth.token.email));
     }
+
+    // --- TOB paid flags ---
+    match /users/{userId}/tob_paid/{docId} {
+      allow read, create, update, delete: if request.auth != null
+        && request.auth.uid == userId
+        && request.auth.token.email != null
+        && exists(/databases/$(database)/documents/allowlist/$(request.auth.token.email));
+    }
   }
 }

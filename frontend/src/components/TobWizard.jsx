@@ -453,8 +453,8 @@ export default function TobWizard({ parsed, typeColIndex, dateColIndex, instrume
               Belgian residents must declare and pay TOB themselves each month via{" "}
               <strong style={{ color: "#e8e4db" }}>MyMinfin</strong> (the SPF Finances online portal).
               The deadline is the{" "}
-              <strong style={{ color: "#e8e4db" }}>last day of the month following the transactions</strong>.
-              Late payment incurs interest (7% p.a.) and possible penalties.
+              <strong style={{ color: "#e8e4db" }}>last workday of the second month following the transactions</strong>{" "}
+              (e.g. transactions in May → deadline is the last workday of July).
             </p>
 
             <ol style={{ margin: "0 0 20px", paddingLeft: 22, fontSize: 13, color: "#c0b890", lineHeight: 2.1 }}>
