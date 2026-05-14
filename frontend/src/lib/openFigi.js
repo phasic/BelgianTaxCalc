@@ -1,9 +1,8 @@
-// In dev, requests are proxied through Vite to avoid CORS. In production the
-// app is a static build so it needs a real backend proxy — fall back to direct
-// for now (can be replaced with a Cloud Function URL later).
+// In dev, requests are proxied through Vite to avoid CORS.
+// In production, a Firebase Cloud Function acts as the server-side proxy.
 const OPENFIGI_URL = import.meta.env.DEV
   ? "/openfigi/v3/mapping"
-  : "https://api.openfigi.com/v3/mapping";
+  : `https://europe-west1-${import.meta.env.VITE_FIREBASE_PROJECT_ID}.cloudfunctions.net/openFigiProxy`;
 const BATCH_SIZE = 10; // max items per OpenFIGI request
 
 /**

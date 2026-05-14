@@ -22,5 +22,13 @@ service cloud.firestore {
         && request.auth.token.email != null
         && exists(/databases/$(database)/documents/allowlist/$(request.auth.token.email));
     }
+
+    // --- Instrument names (ticker → name cache via OpenFIGI) ---
+    match /users/{userId}/instruments/{ticker} {
+      allow read, create, update, delete: if request.auth != null
+        && request.auth.uid == userId
+        && request.auth.token.email != null
+        && exists(/databases/$(database)/documents/allowlist/$(request.auth.token.email));
+    }
   }
 }

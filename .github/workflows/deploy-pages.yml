@@ -1,5 +1,5 @@
 # Builds the Vite app with Firebase web config from repository secrets (not stored in git),
-# then deploys static output to GitHub Pages.
+# then deploys static output to GitHub Pages and the Cloud Function to Firebase.
 #
 # One-time repo setup:
 #   Settings → Secrets and variables → Actions → New repository secret — add each:
@@ -9,7 +9,12 @@
 #     VITE_FIREBASE_STORAGE_BUCKET
 #     VITE_FIREBASE_MESSAGING_SENDER_ID
 #     VITE_FIREBASE_APP_ID
+#     FIREBASE_SERVICE_ACCOUNT   ← base64-encoded service account JSON (for function deploy)
 #   Settings → Pages → Build and deployment → Source: GitHub Actions
+#
+# To create FIREBASE_SERVICE_ACCOUNT:
+#   Firebase console → Project settings → Service accounts → Generate new private key
+#   Then: base64 -i serviceAccount.json | pbcopy  (paste as secret value)
 
 name: Deploy GitHub Pages
 
@@ -63,3 +68,26 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  deploy-functions:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install function dependencies
+        run: npm ci
+        working-directory: functions
+
+      - name: Write Firebase service account
+        run: echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" | base64 -d > $HOME/service-account.json
+
+      - name: Deploy Cloud Functions
+        run: npx firebase-tools deploy --only functions --project belgiantaxcalc --region europe-west1
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: $HOME/service-account.json
