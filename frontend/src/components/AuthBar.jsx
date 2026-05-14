@@ -2,10 +2,10 @@ import { useAuth } from "../context/AuthContext.jsx";
 
 const btn = (disabled) => ({
   padding: "8px 14px",
-  border: "1px solid #3d3820",
+  border: "1px solid #524e34",
   borderRadius: 3,
-  background: disabled ? "#14140f" : "#1a1a0a",
-  color: disabled ? "#4a4535" : "#c4a84a",
+  background: disabled ? "#181810" : "#1a1a0a",
+  color: disabled ? "#665f42" : "#c4a84a",
   cursor: disabled ? "not-allowed" : "pointer",
   fontSize: 11,
   letterSpacing: 1.2,
@@ -28,8 +28,8 @@ export default function AuthBar() {
     return (
       <div
         style={{
-          fontSize: 11,
-          color: "#8a7040",
+        fontSize: 11,
+        color: "#a89058",
           maxWidth: 420,
           textAlign: "right",
           lineHeight: 1.5,
@@ -44,7 +44,7 @@ export default function AuthBar() {
 
   if (authLoading) {
     return (
-      <div style={{ fontSize: 11, color: "#6a6450", letterSpacing: 2, textTransform: "uppercase" }}>
+      <div style={{ fontSize: 11, color: "#8a8268", letterSpacing: 2, textTransform: "uppercase" }}>
         Checking session…
       </div>
     );
@@ -58,7 +58,7 @@ export default function AuthBar() {
       "Signed in";
     return (
       <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", justifyContent: "flex-end" }}>
-        <span style={{ fontSize: 12, color: "#9a9070" }}>{label}</span>
+        <span style={{ fontSize: 12, color: "#c0b890" }}>{label}</span>
         <button type="button" style={btn(false)} onClick={() => signOutUser().catch((e) => setAuthError(e))}>
           Sign out
         </button>

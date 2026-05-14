@@ -2,6 +2,7 @@ import { useMemo, useState, useEffect } from "react";
 import { isTobType, isDividendType } from "../logic/transactionFilters.js";
 import { formatCellDisplay } from "../utils/formatters.js";
 import { classifyInstrument } from "../logic/tobClassification.js";
+import DeadlineCell from "./DeadlineCell.jsx";
 
 const FILTER_BUTTONS = [
   { id: "all", label: "All" },
@@ -37,7 +38,7 @@ function compareCell(a, b, sortId) {
   return (a || "").localeCompare(b || "");
 }
 
-export default function TransactionsTable({ parsed, typeColIndex, viewFilter, setViewFilter, instrumentNames = new Map() }) {
+export default function TransactionsTable({ parsed, typeColIndex, viewFilter, setViewFilter, instrumentNames = new Map(), tobPaidKeys, toggleTobPaid }) {
   const [sortConfig, setSortConfig] = useState({ colIndex: null, dir: "desc" });
 
   useEffect(() => {
@@ -112,7 +113,7 @@ export default function TransactionsTable({ parsed, typeColIndex, viewFilter, se
   return (
     <div
       style={{
-        border: "1px solid #2a2820",
+        border: "1px solid #3d3a28",
         borderRadius: 4,
         background: "#111109",
         overflow: "hidden",
@@ -122,7 +123,7 @@ export default function TransactionsTable({ parsed, typeColIndex, viewFilter, se
       <div
         style={{
           padding: "14px 18px",
-          borderBottom: "1px solid #1e1c14",
+          borderBottom: "1px solid #2e2c1e",
           display: "flex",
           flexWrap: "wrap",
           alignItems: "center",
@@ -134,7 +135,7 @@ export default function TransactionsTable({ parsed, typeColIndex, viewFilter, se
             fontSize: 11,
             letterSpacing: 2,
             textTransform: "uppercase",
-            color: "#5a5540",
+            color: "#7a7460",
             marginRight: "auto",
           }}
         >
@@ -156,10 +157,10 @@ export default function TransactionsTable({ parsed, typeColIndex, viewFilter, se
                 onClick={(e) => { e.stopPropagation(); setViewFilter(id); }}
                 style={{
                   padding: "8px 16px",
-                  border: active ? "1px solid #c4a84a" : "1px solid #2a2820",
+                  border: active ? "1px solid #c4a84a" : "1px solid #3d3a28",
                   borderRadius: 3,
                   background: active ? "#1a1a0a" : "transparent",
-                  color: active ? "#c4a84a" : "#6a6450",
+                  color: active ? "#c4a84a" : "#8a8268",
                   cursor: disabled ? "not-allowed" : "pointer",
                   opacity: disabled ? 0.45 : 1,
                   fontSize: 11,
@@ -176,12 +177,12 @@ export default function TransactionsTable({ parsed, typeColIndex, viewFilter, se
       </div>
 
       {filterNote && (
-        <div style={{ padding: "10px 18px", fontSize: 12, color: "#9a7040", borderBottom: "1px solid #1e1c14" }}>
+        <div style={{ padding: "10px 18px", fontSize: 12, color: "#b08848", borderBottom: "1px solid #2e2c1e" }}>
           {filterNote}
         </div>
       )}
       {!filterNote && viewFilter !== "all" && (
-        <div style={{ padding: "10px 18px", fontSize: 12, color: "#6a6450", borderBottom: "1px solid #1e1c14" }}>
+        <div style={{ padding: "10px 18px", fontSize: 12, color: "#8a8268", borderBottom: "1px solid #2e2c1e" }}>
           Showing {displayEntries.length} of {parsed.rows.length} rows
           {viewFilter === "tob" ? " (buy and sell trades only)" : " (dividends only)"}
         </div>
@@ -192,11 +193,11 @@ export default function TransactionsTable({ parsed, typeColIndex, viewFilter, se
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 640 }}>
           <thead>
             <tr style={{ position: "sticky", top: 0, background: "#14140f", zIndex: 1 }}>
-              {parsed.headers.map((h, hi) => {
-                if (hi === currencyColIndex) return null;
+              {parsed.headers.flatMap((h, hi) => {
+                if (hi === currencyColIndex) return [];
                 const sortId = sortColIds[hi];
                 const isActive = hi === activeSortColIndex;
-                return (
+                const thEl = (
                   <th
                     key={`${hi}-${h}`}
                     onClick={sortId ? () => handleHeaderClick(hi) : undefined}
@@ -208,7 +209,7 @@ export default function TransactionsTable({ parsed, typeColIndex, viewFilter, se
                       fontSize: 10,
                       letterSpacing: 1,
                       textTransform: "uppercase",
-                      borderBottom: "1px solid #2a2820",
+                      borderBottom: "1px solid #3d3a28",
                       whiteSpace: "nowrap",
                       cursor: sortId ? "pointer" : "default",
                       userSelect: "none",
@@ -216,29 +217,32 @@ export default function TransactionsTable({ parsed, typeColIndex, viewFilter, se
                   >
                     {h}
                     {sortId && (
-                      <span
-                        style={{
-                          marginLeft: 5,
-                          opacity: isActive ? 1 : 0.35,
-                          fontSize: 10,
-                        }}
-                      >
+                      <span style={{ marginLeft: 5, opacity: isActive ? 1 : 0.35, fontSize: 10 }}>
                         {isActive ? (activeSortDir === "desc" ? "↓" : "↑") : "↕"}
                       </span>
                     )}
                   </th>
                 );
+                if (hi === dateColIndex) {
+                  return [
+                    thEl,
+                    <th key="deadline-th" style={{ textAlign: "left", padding: "10px 12px", fontWeight: 400, color: "#8a7a50", fontSize: 10, letterSpacing: 1, textTransform: "uppercase", borderBottom: "1px solid #3d3a28", whiteSpace: "nowrap" }}>
+                      TOB Deadline
+                    </th>,
+                  ];
+                }
+                return [thEl];
               })}
               <th
                 style={{
                   textAlign: "left",
                   padding: "10px 12px",
                   fontWeight: 400,
-                  color: "#8a8060",
+                  color: "#a89870",
                   fontSize: 10,
                   letterSpacing: 1,
                   textTransform: "uppercase",
-                  borderBottom: "1px solid #2a2820",
+                  borderBottom: "1px solid #3d3a28",
                   whiteSpace: "nowrap",
                 }}
               >
@@ -250,8 +254,8 @@ export default function TransactionsTable({ parsed, typeColIndex, viewFilter, se
             {displayEntries.length === 0 ? (
               <tr>
                 <td
-                  colSpan={parsed.headers.length - (currencyColIndex >= 0 ? 1 : 0) + 1}
-                  style={{ padding: "28px 16px", textAlign: "center", color: "#6a6450", fontSize: 13 }}
+                  colSpan={parsed.headers.length - (currencyColIndex >= 0 ? 1 : 0) + 2}
+                  style={{ padding: "28px 16px", textAlign: "center", color: "#8a8268", fontSize: 13 }}
                 >
                   {viewFilter === "all" ? "No data rows in this file." : "No rows match this filter."}
                 </td>
@@ -266,10 +270,13 @@ export default function TransactionsTable({ parsed, typeColIndex, viewFilter, se
                     ? classification.key === "120,2" ? "Share" : "Fund"
                     : null;
 
+                const typeStr = typeColIndex >= 0 ? (row[typeColIndex] ?? "") : "";
+                const isToB = isTobType(typeStr);
+
                 return (
-                  <tr key={`${sourceIndex}-${ri}`} style={{ borderTop: "1px solid #1a1810" }}>
-                    {row.map((cell, ci) => {
-                      if (ci === currencyColIndex) return null;
+                  <tr key={`${sourceIndex}-${ri}`} style={{ borderTop: "1px solid #282618" }}>
+                    {row.flatMap((cell, ci) => {
+                      if (ci === currencyColIndex) return [];
                       const header = parsed.headers[ci] ?? "";
                       const isTicker = header.toLowerCase() === "ticker";
                       const instrument = isTicker && cell ? instrumentNames.get(cell) : null;
@@ -277,33 +284,39 @@ export default function TransactionsTable({ parsed, typeColIndex, viewFilter, se
                         ci === fxRateColIndex &&
                         currencyColIndex !== -1 &&
                         (row[currencyColIndex] ?? "").trim().toUpperCase() === "EUR";
-                      return (
+                      const tdEl = (
                         <td
                           key={ci}
                           style={{
                             padding: "10px 12px",
-                            color: isTicker && cell ? "#c4a84a" : "#9a9070",
+                            color: isTicker && cell ? "#c4a84a" : "#c0b890",
                             fontFamily: isTicker && cell ? "ui-monospace, monospace" : "inherit",
                             verticalAlign: "top",
                           }}
                         >
                           {isEurFxRate ? "—" : formatCellDisplay(header, cell)}
                           {instrument?.name && (
-                            <div
-                              style={{
-                                fontFamily: "Georgia, serif",
-                                fontSize: 11,
-                                color: "#6a6050",
-                                marginTop: 3,
-                                fontStyle: "italic",
-                                letterSpacing: 0.2,
-                              }}
-                            >
+                            <div style={{ fontFamily: "Georgia, serif", fontSize: 11, color: "#6a6050", marginTop: 3, fontStyle: "italic", letterSpacing: 0.2 }}>
                               {instrument.name}
                             </div>
                           )}
                         </td>
                       );
+                      if (ci === dateColIndex) {
+                        return [
+                          tdEl,
+                          <DeadlineCell
+                            key="deadline-cell"
+                            row={row}
+                            headers={parsed.headers}
+                            dateStr={cell}
+                            isTob={isToB}
+                            tobPaidKeys={tobPaidKeys}
+                            toggleTobPaid={toggleTobPaid}
+                          />,
+                        ];
+                      }
+                      return [tdEl];
                     })}
                     <td
                       style={{

@@ -4,12 +4,74 @@ import { findTypeColumnIndex, findDateColumnIndex } from "./logic/transactionFil
 import FileDropZone from "./components/FileDropZone.jsx";
 import TransactionsTable from "./components/TransactionsTable.jsx";
 import TobWizard from "./components/TobWizard.jsx";
+import QuickTob from "./components/QuickTob.jsx";
 import AuthBar from "./components/AuthBar.jsx";
 import CloudSyncPanel from "./components/CloudSyncPanel.jsx";
 import { useAuth } from "./context/AuthContext.jsx";
 import { db } from "./lib/firebase.js";
-import { fetchKnownInstruments, saveInstruments } from "./lib/firestoreInstruments.js";
+import { fetchKnownInstruments, saveInstruments, resolveAndSaveNewTickers } from "./lib/firestoreInstruments.js";
 import { resolveTickerNames } from "./lib/openFigi.js";
+import { saveParsedCsvForUser, loadSavedHistoryParsed } from "./lib/firestoreTransactions.js";
+
+const TAB = {
+  QUICK: "quick",
+  UPLOAD: "upload",
+  TRANSACTIONS: "transactions",
+  TOB: "tob",
+};
+
+function NavBar({ activeTab, setActiveTab, hasData, tobEligible, rowCount }) {
+  const tabs = [
+    { id: TAB.QUICK, label: "⚡ Quick TOB" },
+    { id: TAB.UPLOAD, label: "Upload" },
+    { id: TAB.TRANSACTIONS, label: `Transactions${rowCount > 0 ? ` (${rowCount})` : ""}`, disabled: !hasData },
+    { id: TAB.TOB, label: "Calculate TOB", disabled: !tobEligible },
+  ];
+
+  return (
+    <nav
+      style={{
+        width: "100%",
+        borderBottom: "1px solid #3d3a28",
+        background: "#111109",
+        padding: "0 20px",
+        display: "flex",
+        gap: 0,
+        alignItems: "flex-end",
+      }}
+    >
+      {tabs.map((tab) => {
+        const active = activeTab === tab.id;
+        const disabled = tab.disabled;
+        return (
+          <button
+            key={tab.id}
+            type="button"
+            disabled={disabled}
+            onClick={() => !disabled && setActiveTab(tab.id)}
+            style={{
+              padding: "14px 22px",
+              background: "transparent",
+              border: "none",
+              borderBottom: active ? "2px solid #c4a84a" : "2px solid transparent",
+              color: active ? "#c4a84a" : disabled ? "#4a4535" : "#a89870",
+              cursor: disabled ? "not-allowed" : "pointer",
+              fontSize: 12,
+              letterSpacing: 1.5,
+              textTransform: "uppercase",
+              fontFamily: "Georgia, serif",
+              marginBottom: -1,
+              transition: "color 0.15s, border-color 0.15s",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {tab.label}
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
 
 export default function App() {
   const { firebaseConfigured, user } = useAuth();
@@ -17,19 +79,97 @@ export default function App() {
   const [parsed, setParsed] = useState(null);
   const [error, setError] = useState(null);
   const [viewFilter, setViewFilter] = useState("all");
-  const [showTobWizard, setShowTobWizard] = useState(false);
+  const [activeTab, setActiveTab] = useState(TAB.QUICK);
   const [historyParsed, setHistoryParsed] = useState(null);
   const [historyDocCount, setHistoryDocCount] = useState(0);
   const [dataSource, setDataSource] = useState("file");
   const [instrumentNames, setInstrumentNames] = useState(new Map());
-  // Session-level cache: persists across CSV/history switches so we never
-  // call OpenFIGI twice for the same ticker within one browser session.
   const instrumentCache = useRef(new Map());
+
+  // TOB paid state — persisted to localStorage so it survives page refresh.
+  const [tobPaidKeys, setTobPaidKeys] = useState(() => {
+    try {
+      const raw = localStorage.getItem("tob_paid_v1");
+      return new Set(raw ? JSON.parse(raw) : []);
+    } catch {
+      return new Set();
+    }
+  });
+
+  const toggleTobPaid = useCallback((key) => {
+    setTobPaidKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      try { localStorage.setItem("tob_paid_v1", JSON.stringify([...next])); } catch {}
+      return next;
+    });
+  }, []);
+
+  /** Reload cloud history into state (used by Quick TOB on mount and after CSV upload). */
+  const reloadHistory = useCallback(async () => {
+    if (!db || !user) return;
+    const merged = await loadSavedHistoryParsed(db, user.uid);
+    setHistoryParsed({ headers: merged.headers, rows: merged.rows });
+    setHistoryDocCount(merged.docCount);
+  }, [user]);
+
+  /** Mark (or unmark) a batch of keys at once without multiple re-renders. */
+  const markPaidBatch = useCallback((keys, paid = true) => {
+    setTobPaidKeys((prev) => {
+      const next = new Set(prev);
+      if (paid) keys.forEach((k) => next.add(k));
+      else keys.forEach((k) => next.delete(k));
+      try { localStorage.setItem("tob_paid_v1", JSON.stringify([...next])); } catch {}
+      return next;
+    });
+  }, []);
+
+  // ── Auto-sync CSV to Firestore whenever a new file is parsed ──
+  // After saving, also silently refresh historyParsed so Quick TOB is always up to date.
+  const [autoSyncMsg, setAutoSyncMsg] = useState(null);
+  useEffect(() => {
+    if (!db || !user || !parsed || !fileName) return;
+    let cancelled = false;
+    async function run() {
+      try {
+        const res = await saveParsedCsvForUser(db, user.uid, parsed, fileName);
+        const tickerIdx = parsed.headers.findIndex(
+          (h) => h.trim().toLowerCase() === "ticker"
+        );
+        if (tickerIdx >= 0) {
+          const tickers = [
+            ...new Set(
+              parsed.rows.map((r) => (r[tickerIdx] ?? "").trim()).filter(Boolean)
+            ),
+          ];
+          if (tickers.length) await resolveAndSaveNewTickers(db, user.uid, tickers);
+        }
+        // Silently refresh history so Quick TOB always sees the latest DB state
+        const merged = await loadSavedHistoryParsed(db, user.uid);
+        if (!cancelled) {
+          setHistoryParsed({ headers: merged.headers, rows: merged.rows });
+          setHistoryDocCount(merged.docCount);
+          const msg =
+            res.added > 0
+              ? `☁  ${res.added} new row${res.added === 1 ? "" : "s"} synced to cloud`
+              : `☁  Already up to date — no new rows`;
+          setAutoSyncMsg(msg);
+          setTimeout(() => { if (!cancelled) setAutoSyncMsg(null); }, 4000);
+        }
+      } catch {
+        // silent — user can still manually save from the Upload tab
+      }
+    }
+    run();
+    return () => { cancelled = true; };
+  }, [parsed, fileName, user]);
 
   const displayParsed = dataSource === "history" && historyParsed ? historyParsed : parsed;
   const typeColIndex = displayParsed ? findTypeColumnIndex(displayParsed.headers) : -1;
   const dateColIndex = displayParsed ? findDateColumnIndex(displayParsed.headers) : -1;
   const tobEligible = Boolean(displayParsed && typeColIndex >= 0);
+  const rowCount = displayParsed?.rows?.length ?? 0;
 
   const loadText = useCallback((name, text) => {
     try {
@@ -37,10 +177,9 @@ export default function App() {
       setFileName(name);
       setError(null);
       setViewFilter("all");
-      setShowTobWizard(false);
       setDataSource("file");
-      setHistoryParsed(null);
-      setHistoryDocCount(0);
+      // Stay on Quick TOB if that's where we are; otherwise go to Transactions
+      setActiveTab((prev) => prev === TAB.QUICK ? TAB.QUICK : TAB.TRANSACTIONS);
     } catch (e) {
       setParsed(null);
       setError(e instanceof Error ? e.message : String(e));
@@ -73,14 +212,14 @@ export default function App() {
     setHistoryDocCount(docCount);
     setDataSource("history");
     setViewFilter("all");
-    setShowTobWizard(false);
     setError(null);
+    setActiveTab(TAB.TRANSACTIONS);
   }, []);
 
   useEffect(() => {
     if (!displayParsed) return;
-    if (dateColIndex < 0 && showTobWizard) setShowTobWizard(false);
-  }, [displayParsed, dateColIndex, showTobWizard]);
+    if (dateColIndex < 0 && activeTab === TAB.TOB) setActiveTab(TAB.TRANSACTIONS);
+  }, [displayParsed, dateColIndex, activeTab]);
 
   useEffect(() => {
     if (!displayParsed) {
@@ -109,31 +248,20 @@ export default function App() {
     let cancelled = false;
     async function load() {
       const cache = instrumentCache.current;
-
-      // 1. What's already in the session cache?
       const fromCache = new Map(
         tickers.filter((t) => cache.has(t)).map((t) => [t, cache.get(t)])
       );
       const afterCache = tickers.filter((t) => !fromCache.has(t));
-
-      // 2. For the rest, check Firestore (when signed in)
       const fromDb = db && user && afterCache.length
         ? await fetchKnownInstruments(db, user.uid, afterCache)
         : new Map();
       fromDb.forEach((v, k) => cache.set(k, v));
       const afterDb = afterCache.filter((t) => !fromDb.has(t));
-
-      // 3. Only call OpenFIGI for what's still unknown
-      const fresh = afterDb.length
-        ? await resolveTickerNames(afterDb)
-        : new Map();
-
-      // 4. Persist fresh resolutions to Firestore and session cache
+      const fresh = afterDb.length ? await resolveTickerNames(afterDb) : new Map();
       if (fresh.size) {
         fresh.forEach((v, k) => cache.set(k, v));
         if (db && user) saveInstruments(db, user.uid, fresh);
       }
-
       if (!cancelled) {
         setInstrumentNames(new Map([...fromCache, ...fromDb, ...fresh]));
       }
@@ -151,50 +279,74 @@ export default function App() {
         background: "#0d0d0f",
         color: "#e8e4db",
         fontFamily: "Georgia, 'Times New Roman', serif",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
       }}
     >
+      {/* ── Header ── */}
       <header
         style={{
-          borderBottom: "1px solid #2a2820",
-          padding: "28px 40px 24px",
-          background: "linear-gradient(180deg,#111108,#0d0d0f)",
+          width: "100%",
+          borderBottom: "none",
+          padding: "18px 20px 14px",
+          background: "linear-gradient(180deg,#111108,#0e0e0c)",
           display: "flex",
           flexWrap: "wrap",
           gap: 20,
-          alignItems: "flex-start",
+          alignItems: "center",
           justifyContent: "space-between",
         }}
       >
-        <div>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 18 }}>
           <div
             style={{
               fontSize: 10,
               letterSpacing: 4,
               textTransform: "uppercase",
               color: "#c4a84a",
-              marginBottom: 6,
               fontStyle: "italic",
             }}
           >
             Belgian Tax Calc
           </div>
-          <h1 style={{ fontSize: 26, fontWeight: 400, margin: 0, color: "#f0ead8" }}>
+          <h1 style={{ fontSize: 20, fontWeight: 400, margin: 0, color: "#f0ead8" }}>
             Investment Tax Agent
           </h1>
         </div>
         <AuthBar />
       </header>
 
-      <main style={{ maxWidth: 1100, margin: "0 auto", padding: "40px 24px" }}>
-        <p style={{ color: "#9a9070", fontSize: 14, lineHeight: 1.7, margin: "0 0 24px" }}>
-          Step 1 — Load your Revolut trading statement CSV. Parsing runs in your browser. Optional: sign in to
-          persist rows in your own Firebase database (deduplicated).
-        </p>
+      {/* ── Nav tabs ── */}
+      <NavBar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        hasData={Boolean(displayParsed)}
+        tobEligible={tobEligible}
+        rowCount={rowCount}
+      />
 
-        <FileDropZone parsed={parsed} fileName={fileName} onFile={onFile} />
+      {/* ── Auto-sync status banner ── */}
+      {autoSyncMsg && (
+        <div
+          style={{
+            width: "100%",
+            padding: "7px 20px",
+            background: "#0e1a0e",
+            borderBottom: "1px solid #1e3a1e",
+            fontSize: 11,
+            color: "#72c472",
+            letterSpacing: 0.5,
+          }}
+        >
+          {autoSyncMsg}
+        </div>
+      )}
 
-        {firebaseConfigured && <CloudSyncPanel parsed={parsed} fileName={fileName} onHistoryLoaded={onHistoryLoaded} historyParsed={historyParsed} />}
+      {/* ── Main content ── */}
+      <main style={{ width: "100%", maxWidth: 1100, padding: "28px 16px", boxSizing: "border-box" }}>
 
+        {/* Error banner — always visible regardless of tab */}
         {error && (
           <div
             style={{
@@ -212,108 +364,115 @@ export default function App() {
           </div>
         )}
 
-        {showDataToggle && (
-          <div
-            style={{
-              marginBottom: 20,
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 10,
-              alignItems: "center",
-            }}
-          >
-            <span style={{ fontSize: 12, color: "#6a6450" }}>Data source:</span>
-            <button
-              type="button"
-              disabled={!parsed}
-              onClick={() => setDataSource("file")}
-              style={{
-                padding: "8px 16px",
-                border: dataSource === "file" ? "1px solid #c4a84a" : "1px solid #2a2820",
-                borderRadius: 3,
-                background: dataSource === "file" ? "#1a1a0a" : "transparent",
-                color: dataSource === "file" ? "#c4a84a" : "#6a6450",
-                cursor: parsed ? "pointer" : "not-allowed",
-                fontSize: 11,
-                letterSpacing: 1.2,
-                textTransform: "uppercase",
-                fontFamily: "Georgia, serif",
-              }}
-            >
-              Current CSV
-            </button>
-            <button
-              type="button"
-              disabled={!historyParsed}
-              onClick={() => setDataSource("history")}
-              style={{
-                padding: "8px 16px",
-                border: dataSource === "history" ? "1px solid #c4a84a" : "1px solid #2a2820",
-                borderRadius: 3,
-                background: dataSource === "history" ? "#1a1a0a" : "transparent",
-                color: dataSource === "history" ? "#c4a84a" : "#6a6450",
-                cursor: historyParsed ? "pointer" : "not-allowed",
-                fontSize: 11,
-                letterSpacing: 1.2,
-                textTransform: "uppercase",
-                fontFamily: "Georgia, serif",
-              }}
-            >
-              Saved history{historyParsed ? ` (${historyDocCount})` : ""}
-            </button>
-            {dataSource === "history" && !historyParsed && (
-              <span style={{ fontSize: 12, color: "#6a6450" }}>Use “Load full history from cloud” first.</span>
+        {/* ═══ QUICK TOB tab ═══ */}
+        {activeTab === TAB.QUICK && (
+          <QuickTob
+            parsed={parsed}
+            fileName={fileName}
+            onFile={onFile}
+            user={user}
+            historyParsed={historyParsed}
+            reloadHistory={reloadHistory}
+            instrumentNames={instrumentNames}
+            tobPaidKeys={tobPaidKeys}
+            toggleTobPaid={toggleTobPaid}
+            markPaidBatch={markPaidBatch}
+          />
+        )}
+
+        {/* ═══ UPLOAD tab ═══ */}
+        {activeTab === TAB.UPLOAD && (
+          <div>
+            <p style={{ color: "#c0b890", fontSize: 14, lineHeight: 1.7, margin: "0 0 24px" }}>
+              Load your Revolut trading statement CSV. Parsing runs entirely in your browser.
+              Optionally sign in to persist and merge rows in your own Firebase database.
+            </p>
+            <FileDropZone parsed={parsed} fileName={fileName} onFile={onFile} />
+            {firebaseConfigured && (
+              <CloudSyncPanel
+                parsed={parsed}
+                fileName={fileName}
+                onHistoryLoaded={onHistoryLoaded}
+                historyParsed={historyParsed}
+              />
             )}
           </div>
         )}
 
-        {displayParsed && (
-          <div style={{ marginBottom: 20, display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowTobWizard((v) => !v);
-              }}
-              disabled={!tobEligible}
-              style={{
-                padding: "12px 22px",
-                border: "1px solid #c4a84a",
-                borderRadius: 4,
-                background: tobEligible ? "#1a1a0a" : "#14140f",
-                color: tobEligible ? "#c4a84a" : "#4a4535",
-                cursor: tobEligible ? "pointer" : "not-allowed",
-                fontSize: 12,
-                letterSpacing: 2,
-                textTransform: "uppercase",
-                fontFamily: "Georgia, serif",
-              }}
-            >
-              {showTobWizard ? "Close TOB calculation" : "Calculate TOB"}
-            </button>
-            {!tobEligible && (
-              <span style={{ fontSize: 12, color: "#6a6450" }}>Requires a Type column with buy/sell rows.</span>
+        {/* ═══ TRANSACTIONS tab ═══ */}
+        {activeTab === TAB.TRANSACTIONS && displayParsed && (
+          <div>
+            {showDataToggle && (
+              <div style={{ marginBottom: 20, display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+                <span style={{ fontSize: 12, color: "#8a8268" }}>Viewing:</span>
+                <button
+                  type="button"
+                  disabled={!parsed}
+                  onClick={() => setDataSource("file")}
+                  style={{
+                    padding: "7px 14px",
+                    border: dataSource === "file" ? "1px solid #c4a84a" : "1px solid #3d3a28",
+                    borderRadius: 3,
+                    background: dataSource === "file" ? "#1a1a0a" : "transparent",
+                    color: dataSource === "file" ? "#c4a84a" : "#a89870",
+                    cursor: parsed ? "pointer" : "not-allowed",
+                    fontSize: 11,
+                    letterSpacing: 1.2,
+                    textTransform: "uppercase",
+                    fontFamily: "Georgia, serif",
+                  }}
+                >
+                  Current CSV
+                </button>
+                <button
+                  type="button"
+                  disabled={!historyParsed}
+                  onClick={() => setDataSource("history")}
+                  style={{
+                    padding: "7px 14px",
+                    border: dataSource === "history" ? "1px solid #c4a84a" : "1px solid #3d3a28",
+                    borderRadius: 3,
+                    background: dataSource === "history" ? "#1a1a0a" : "transparent",
+                    color: dataSource === "history" ? "#c4a84a" : "#a89870",
+                    cursor: historyParsed ? "pointer" : "not-allowed",
+                    fontSize: 11,
+                    letterSpacing: 1.2,
+                    textTransform: "uppercase",
+                    fontFamily: "Georgia, serif",
+                  }}
+                >
+                  Cloud history{historyParsed ? ` (${historyDocCount})` : ""}
+                </button>
+              </div>
             )}
-            {showTobWizard && (
-              <span style={{ fontSize: 12, color: "#6a6450" }}>
-                Full CSV table is hidden — only transactions in your TOB scope are shown in the panel below.
-              </span>
-            )}
+            <TransactionsTable
+              parsed={displayParsed}
+              typeColIndex={typeColIndex}
+              viewFilter={viewFilter}
+              setViewFilter={setViewFilter}
+              instrumentNames={instrumentNames}
+              tobPaidKeys={tobPaidKeys}
+              toggleTobPaid={toggleTobPaid}
+            />
           </div>
         )}
 
-        {showTobWizard && tobEligible && (
-          <TobWizard parsed={displayParsed} typeColIndex={typeColIndex} dateColIndex={dateColIndex} instrumentNames={instrumentNames} />
-        )}
-
-        {displayParsed && !showTobWizard && (
-          <TransactionsTable
+        {/* ═══ TOB tab ═══ */}
+        {activeTab === TAB.TOB && tobEligible && (
+          <TobWizard
             parsed={displayParsed}
             typeColIndex={typeColIndex}
-            viewFilter={viewFilter}
-            setViewFilter={setViewFilter}
+            dateColIndex={dateColIndex}
             instrumentNames={instrumentNames}
+            tobPaidKeys={tobPaidKeys}
+            toggleTobPaid={toggleTobPaid}
           />
+        )}
+
+        {activeTab === TAB.TOB && !tobEligible && (
+          <div style={{ color: "#8a8268", fontSize: 14, paddingTop: 8 }}>
+            Load a CSV with a Type column containing buy/sell rows first.
+          </div>
         )}
       </main>
     </div>

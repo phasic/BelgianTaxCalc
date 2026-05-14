@@ -17,7 +17,7 @@ export default function FileDropZone({ parsed, fileName, onFile }) {
       onDrop={handleDrop}
       onClick={() => document.getElementById("csv-input")?.click()}
       style={{
-        border: `1px solid ${dragOver ? "#c4a84a" : parsed ? "#3d3820" : "#222018"}`,
+        border: `1px solid ${dragOver ? "#c4a84a" : parsed ? "#524e34" : "#3d3a28"}`,
         borderRadius: 4,
         padding: 36,
         textAlign: "center",
@@ -38,15 +38,15 @@ export default function FileDropZone({ parsed, fileName, onFile }) {
         <>
           <div style={{ fontSize: 22, marginBottom: 8 }}>✅</div>
           <div style={{ color: "#c4a84a", fontSize: 14 }}>{fileName}</div>
-          <div style={{ color: "#5a5540", fontSize: 12, marginTop: 6 }}>
+          <div style={{ color: "#8a8268", fontSize: 12, marginTop: 6 }}>
             {parsed.rows.length} row{parsed.rows.length === 1 ? "" : "s"} in file · click to load another file
           </div>
         </>
       ) : (
         <>
           <div style={{ fontSize: 28, marginBottom: 12, opacity: 0.45 }}>⬆</div>
-          <div style={{ color: "#9a9070", fontSize: 14, marginBottom: 6 }}>Drop your Revolut CSV here</div>
-          <div style={{ color: "#4a4535", fontSize: 11, letterSpacing: 1 }}>or click to choose a file</div>
+          <div style={{ color: "#c0b890", fontSize: 14, marginBottom: 6 }}>Drop your Revolut CSV here</div>
+          <div style={{ color: "#8a8268", fontSize: 11, letterSpacing: 1 }}>or click to choose a file</div>
         </>
       )}
     </div>

@@ -1,14 +1,15 @@
 import { formatCellDisplay } from "../utils/formatters.js";
+import DeadlineCell from "./DeadlineCell.jsx";
 
 const thStyle = {
   textAlign: "left",
   padding: "10px 12px",
   fontWeight: 400,
-  color: "#8a8060",
+  color: "#a89870",
   fontSize: 10,
   letterSpacing: 1,
   textTransform: "uppercase",
-  borderBottom: "1px solid #2a2820",
+  borderBottom: "1px solid #3d3a28",
   whiteSpace: "nowrap",
 };
 
@@ -21,7 +22,7 @@ const EUR = new Intl.NumberFormat("nl-BE", {
 
 const PCT = (r) => `${(r * 100).toFixed(2)}%`;
 
-export default function TobResultTable({ headers, lineItems, instrumentNames = new Map() }) {
+export default function TobResultTable({ headers, lineItems, instrumentNames = new Map(), dateColIndex = -1, tobPaidKeys, toggleTobPaid }) {
   const currencyColIndex = headers.findIndex((h) => h.trim().toLowerCase() === "currency");
 
   return (
@@ -31,7 +32,7 @@ export default function TobResultTable({ headers, lineItems, instrumentNames = n
         maxHeight: "min(60vh, 520px)",
         overflowY: "auto",
         marginTop: 12,
-        border: "1px solid #2a2820",
+        border: "1px solid #3d3a28",
         borderRadius: 4,
         background: "#0d0d0b",
       }}
@@ -39,9 +40,13 @@ export default function TobResultTable({ headers, lineItems, instrumentNames = n
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 640 }}>
         <thead>
           <tr style={{ position: "sticky", top: 0, background: "#14140f", zIndex: 1 }}>
-            {headers.map((h, hi) => {
-              if (hi === currencyColIndex) return null;
-              return <th key={`${hi}-${h}`} style={thStyle}>{h}</th>;
+            {headers.flatMap((h, hi) => {
+              if (hi === currencyColIndex) return [];
+              const thEl = <th key={`${hi}-${h}`} style={thStyle}>{h}</th>;
+              if (hi === dateColIndex) {
+                return [thEl, <th key="deadline-th" style={{ ...thStyle, color: "#8a7a50" }}>TOB Deadline</th>];
+              }
+              return [thEl];
             })}
             <th style={{ ...thStyle, color: "#9a8050" }}>Instrument</th>
             <th style={{ ...thStyle, color: "#9a8050" }}>Art.</th>
@@ -57,17 +62,17 @@ export default function TobResultTable({ headers, lineItems, instrumentNames = n
                 ? classification.key === "120,2" ? "Share" : "Fund"
                 : null;
             return (
-              <tr key={sourceIndex} style={{ borderTop: "1px solid #1a1810" }}>
-                {row.map((cell, ci) => {
-                  if (ci === currencyColIndex) return null;
+              <tr key={sourceIndex} style={{ borderTop: "1px solid #282618" }}>
+                {row.flatMap((cell, ci) => {
+                  if (ci === currencyColIndex) return [];
                   const header = headers[ci] ?? "";
                   const isTicker = header.toLowerCase() === "ticker";
-                  return (
+                  const tdEl = (
                     <td
                       key={ci}
                       style={{
                         padding: "10px 12px",
-                        color: isTicker && cell ? "#c4a84a" : "#9a9070",
+                        color: isTicker && cell ? "#c4a84a" : "#c0b890",
                         fontFamily: isTicker && cell ? "ui-monospace, monospace" : "inherit",
                         verticalAlign: "top",
                       }}
@@ -80,6 +85,21 @@ export default function TobResultTable({ headers, lineItems, instrumentNames = n
                       )}
                     </td>
                   );
+                  if (ci === dateColIndex) {
+                    return [
+                      tdEl,
+                      <DeadlineCell
+                        key="deadline-cell"
+                        row={row}
+                        headers={headers}
+                        dateStr={cell}
+                        isTob={true}
+                        tobPaidKeys={tobPaidKeys}
+                        toggleTobPaid={toggleTobPaid}
+                      />,
+                    ];
+                  }
+                  return [tdEl];
                 })}
 
                 {/* Instrument type */}
@@ -96,7 +116,7 @@ export default function TobResultTable({ headers, lineItems, instrumentNames = n
                 </td>
 
                 {/* Rate */}
-                <td style={{ padding: "10px 12px", color: "#9a9070", whiteSpace: "nowrap", verticalAlign: "top", fontFamily: "ui-monospace, monospace", fontSize: 12 }}>
+                <td style={{ padding: "10px 12px", color: "#c0b890", whiteSpace: "nowrap", verticalAlign: "top", fontFamily: "ui-monospace, monospace", fontSize: 12 }}>
                   {PCT(classification.rate)}
                 </td>
 
@@ -110,10 +130,10 @@ export default function TobResultTable({ headers, lineItems, instrumentNames = n
                       )}
                     </span>
                   ) : (
-                    <span style={{ color: "#5a5540" }}>—</span>
+                    <span style={{ color: "#7a7460" }}>—</span>
                   )}
                   {eurAmount !== null && (
-                    <div style={{ fontSize: 10, color: "#5a5540", marginTop: 2 }}>
+                    <div style={{ fontSize: 10, color: "#7a7460", marginTop: 2 }}>
                       on {EUR.format(eurAmount)}
                     </div>
                   )}

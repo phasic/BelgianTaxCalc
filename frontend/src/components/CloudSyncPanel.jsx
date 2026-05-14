@@ -103,11 +103,11 @@ export default function CloudSyncPanel({ parsed, fileName, onHistoryLoaded, hist
         style={{
           marginBottom: 24,
           padding: 16,
-          border: "1px solid #2a2820",
+          border: "1px solid #3d3a28",
           borderRadius: 4,
-          background: "#111109",
+          background: "#141410",
           fontSize: 13,
-          color: "#6a6450",
+          color: "#8a8268",
           lineHeight: 1.6,
         }}
       >
@@ -121,9 +121,9 @@ export default function CloudSyncPanel({ parsed, fileName, onHistoryLoaded, hist
       style={{
         marginBottom: 24,
         padding: 18,
-        border: "1px solid #2a2820",
+        border: "1px solid #3d3a28",
         borderRadius: 4,
-        background: "#111109",
+        background: "#141410",
       }}
     >
       <div
@@ -131,13 +131,13 @@ export default function CloudSyncPanel({ parsed, fileName, onHistoryLoaded, hist
           fontSize: 11,
           letterSpacing: 2,
           textTransform: "uppercase",
-          color: "#5a5540",
+          color: "#7a7460",
           marginBottom: 12,
         }}
       >
         Cloud history (Firebase)
       </div>
-      <p style={{ margin: "0 0 14px", fontSize: 13, color: "#9a9070", lineHeight: 1.6 }}>
+      <p style={{ margin: "0 0 14px", fontSize: 13, color: "#c0b890", lineHeight: 1.6 }}>
         Each row is fingerprinted from its column values. Overlapping re-uploads only add rows that are not already
         stored.
       </p>
@@ -152,7 +152,7 @@ export default function CloudSyncPanel({ parsed, fileName, onHistoryLoaded, hist
             border: "1px solid #c4a84a",
             borderRadius: 4,
             background: parsed && !saveBusy ? "#1a1a0a" : "#14140f",
-            color: parsed && !saveBusy ? "#c4a84a" : "#4a4535",
+            color: parsed && !saveBusy ? "#c4a84a" : "#665f42",
             cursor: parsed && !saveBusy ? "pointer" : "not-allowed",
             fontSize: 12,
             letterSpacing: 1.5,
@@ -168,10 +168,10 @@ export default function CloudSyncPanel({ parsed, fileName, onHistoryLoaded, hist
           onClick={onLoadHistory}
           style={{
             padding: "10px 18px",
-            border: "1px solid #3d3820",
+            border: "1px solid #524e34",
             borderRadius: 4,
-            background: "#14140f",
-            color: "#9a9070",
+            background: "#181810",
+            color: "#c0b890",
             cursor: loadBusy ? "wait" : "pointer",
             fontSize: 12,
             letterSpacing: 1.5,
@@ -184,8 +184,8 @@ export default function CloudSyncPanel({ parsed, fileName, onHistoryLoaded, hist
       </div>
 
       {historyParsed && (
-        <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #1e1c14" }}>
-          <div style={{ fontSize: 11, letterSpacing: 1.5, textTransform: "uppercase", color: "#5a5540", marginBottom: 10 }}>
+        <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #2e2c1e" }}>
+          <div style={{ fontSize: 11, letterSpacing: 1.5, textTransform: "uppercase", color: "#7a7460", marginBottom: 10 }}>
             Instrument names
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
@@ -195,10 +195,10 @@ export default function CloudSyncPanel({ parsed, fileName, onHistoryLoaded, hist
               onClick={onEnrich}
               style={{
                 padding: "10px 18px",
-                border: "1px solid #3d4820",
+                border: "1px solid #4a5828",
                 borderRadius: 4,
-                background: "#14140f",
-                color: enrichBusy ? "#4a5035" : "#8a9070",
+                background: "#181810",
+                color: enrichBusy ? "#667050" : "#a0b880",
                 cursor: enrichBusy ? "wait" : "pointer",
                 fontSize: 12,
                 letterSpacing: 1.5,
@@ -213,7 +213,7 @@ export default function CloudSyncPanel({ parsed, fileName, onHistoryLoaded, hist
             <div
               style={{
                 fontSize: 12,
-                color: enrichMsg.startsWith("Resolved and saved") ? "#7a9a70" : "#9a9070",
+                color: enrichMsg.startsWith("Resolved and saved") ? "#90c478" : "#c0b890",
                 marginTop: 10,
               }}
             >
@@ -227,7 +227,7 @@ export default function CloudSyncPanel({ parsed, fileName, onHistoryLoaded, hist
         <div
           style={{
             fontSize: 12,
-            color: saveMsg.startsWith("Saved") ? "#7a9a70" : "#c46a4a",
+            color: saveMsg.startsWith("Saved") ? "#90c478" : "#c46a4a",
             marginTop: 12,
           }}
         >
