@@ -132,6 +132,28 @@ export async function resolveAndSaveNewTickers(firestore, uid, tickers) {
   const resolved = await resolveTickerNames(needsResolving);
   await saveInstruments(firestore, uid, resolved);
 
+  // For tickers OpenFIGI couldn't resolve, write a minimal stub so they appear
+  // in the Instruments list and can be manually classified. Stubs are intentionally
+  // left out of fetchKnownInstruments (no name / no manualType) so the next sync
+  // will retry OpenFIGI automatically.
+  const unresolvable = needsResolving.filter((t) => !resolved.has(t));
+  if (unresolvable.length) {
+    let batch = writeBatch(firestore);
+    let ops = 0;
+    for (const ticker of unresolvable) {
+      const ref = doc(firestore, "users", uid, INSTRUMENTS_COLLECTION, ticker);
+      // merge: true — never overwrite a manualType the user already set
+      batch.set(ref, { ticker, stubAt: serverTimestamp() }, { merge: true });
+      ops++;
+      if (ops >= 500) {
+        await batch.commit();
+        batch = writeBatch(firestore);
+        ops = 0;
+      }
+    }
+    if (ops > 0) await batch.commit();
+  }
+
   return { resolved: resolved.size };
 }
 

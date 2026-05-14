@@ -18,7 +18,7 @@ import InstrumentTypeCell from "./InstrumentTypeCell.jsx";
  * Rows with missing classification data are visually highlighted so the user
  * knows they need to take action.
  */
-export default function InstrumentList({ updateManualType }) {
+export default function InstrumentList({ updateManualType, instrumentNames }) {
   const { user } = useAuth();
   const [instruments, setInstruments] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -113,7 +113,7 @@ export default function InstrumentList({ updateManualType }) {
     );
   }
 
-  if (instruments && instruments.size === 0) {
+  if (instruments && instruments.size === 0 && (!instrumentNames || instrumentNames.size === 0)) {
     return (
       <div
         style={{
@@ -133,8 +133,21 @@ export default function InstrumentList({ updateManualType }) {
 
   if (!instruments) return null;
 
+  // Merge in-memory instrumentNames (from App's current session) with the
+  // Firestore list so tickers that exist in transaction history but don't yet
+  // have a Firestore stub (e.g. uploaded before this fix) are still visible.
+  // Firestore data takes precedence; in-memory data fills the gaps.
+  const merged = new Map(instruments);
+  if (instrumentNames) {
+    for (const [ticker, info] of instrumentNames) {
+      if (!merged.has(ticker)) {
+        merged.set(ticker, info ?? {});
+      }
+    }
+  }
+
   // Sort: unresolved first, then alphabetically by ticker
-  const rows = [...instruments.entries()].sort(([a, ai], [b, bi]) => {
+  const rows = [...merged.entries()].sort(([a, ai], [b, bi]) => {
     const ac = classifyInstrument(ai);
     const bc = classifyInstrument(bi);
     if (ac.unresolved && !bc.unresolved) return -1;

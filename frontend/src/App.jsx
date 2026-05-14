@@ -688,7 +688,10 @@ export default function App() {
 
         {/* ═══ INSTRUMENTS tab ═══ */}
         {activeTab === TAB.INSTRUMENTS && (
-          <InstrumentList updateManualType={updateManualType} />
+          <InstrumentList
+            updateManualType={updateManualType}
+            instrumentNames={instrumentNames}
+          />
         )}
       </main>
     </div>
