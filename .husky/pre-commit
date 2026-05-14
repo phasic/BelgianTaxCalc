@@ -1,5 +1,6 @@
 set -e
-# Avoid inlining Firebase web config into docs/ (public repo). Use frontend/.env.local only on your machine for dev.
+# Smoke-test build; do not stage docs/ (built site is deployed by GitHub Actions with secrets).
+# Move .env.local aside so a local commit never bakes Firebase config into docs/ by mistake.
 ENV_HOLD="frontend/.env.local.__precommit_hold__"
 if [ -f frontend/.env.local ]; then
   mv frontend/.env.local "$ENV_HOLD"
@@ -8,4 +9,3 @@ npm run build
 if [ -f "$ENV_HOLD" ]; then
   mv "$ENV_HOLD" frontend/.env.local
 fi
-git add docs/
