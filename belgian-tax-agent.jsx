@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const MONTH_NAMES = [
   "January",
@@ -14,6 +14,84 @@ const MONTH_NAMES = [
   "November",
   "December",
 ];
+
+/**
+ * Query Wikidata SPARQL for ISINs by ticker symbol.
+ * Uses exchange-ticker qualifiers (P414/P249) → ISIN property (P946).
+ * Works for major stocks; UCITS ETFs are generally not in Wikidata.
+ * CORS: Wikidata SPARQL returns Access-Control-Allow-Origin: *
+ */
+async function fetchWikidataIsins(tickers) {
+  if (!tickers.length) return {};
+  const tickerList = tickers.map((t) => `"${t.toUpperCase()}"`).join(" ");
+  const query = `SELECT ?item ?itemLabel ?ticker ?isin WHERE {
+  ?item wdt:P946 ?isin .
+  ?item p:P414 [ ps:P414 ?exch ; pq:P249 ?ticker ] .
+  FILTER (UCASE(?ticker) IN (${tickerList}))
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "en" }
+} LIMIT 100`;
+  try {
+    const url = `https://query.wikidata.org/sparql?format=json&query=${encodeURIComponent(query)}`;
+    const resp = await fetch(url, {
+      headers: { "User-Agent": "BelgianTaxCalc/1.0" },
+    });
+    if (!resp.ok) return {};
+    const data = await resp.json();
+    const result = {};
+    for (const binding of data?.results?.bindings ?? []) {
+      const ticker = binding.ticker?.value?.toUpperCase();
+      const isin = binding.isin?.value;
+      const name = binding.itemLabel?.value;
+      if (ticker && isin && !result[ticker]) {
+        result[ticker] = { isin, name, source: "wikidata" };
+      }
+    }
+    return result;
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Query OpenFIGI /v3/mapping for instrument name + shareClassFIGI.
+ * Called via the Vite dev-server proxy at /api/openfigi (avoids CORS).
+ * Returns shareClassFIGI as fallback identifier when ISIN is unavailable.
+ */
+async function fetchOpenFigiInfo(tickers) {
+  if (!tickers.length) return {};
+  const BATCH = 10;
+  const result = {};
+  for (let i = 0; i < tickers.length; i += BATCH) {
+    const batch = tickers.slice(i, i + BATCH);
+    const jobs = batch.map((t) => ({ idType: "TICKER", idValue: t }));
+    try {
+      const resp = await fetch("/api/openfigi/v3/mapping", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(jobs),
+      });
+      if (!resp.ok) continue;
+      const data = await resp.json();
+      for (let j = 0; j < batch.length; j++) {
+        const ticker = batch[j].toUpperCase();
+        const job = data[j];
+        if (job?.data?.length) {
+          const d = job.data[0];
+          result[ticker] = {
+            isin: null,
+            name: d.name ?? null,
+            shareClassFIGI: d.shareClassFIGI ?? null,
+            securityType: d.securityType ?? null,
+            source: "openfigi",
+          };
+        }
+      }
+    } catch {
+      /* ignore batch errors; results will be null for these tickers */
+    }
+  }
+  return result;
+}
 
 /** Split one CSV line into fields; supports "quoted, commas" */
 function splitCsvLine(line) {
@@ -169,8 +247,57 @@ function collectTobRowsInScope(parsed, typeColIndex, dateColIndex, scope, opts) 
   return out;
 }
 
-function TobScopeTable({ headers, entries, showCheckbox, selectedIndices, onToggle, emptyLabel }) {
-  const colSpan = headers.length + (showCheckbox ? 1 : 0);
+function IsinBadge({ ticker, isinMap, isinLoading }) {
+  if (!ticker) return <span style={{ color: "#4a4830" }}>—</span>;
+  const entry = isinMap[ticker];
+  if (!entry) {
+    return (
+      <span style={{ color: "#4a4830", fontStyle: "italic", fontSize: 11 }}>
+        {isinLoading ? "…" : "—"}
+      </span>
+    );
+  }
+  if (entry.isin) {
+    return (
+      <span
+        title={`Source: Wikidata${entry.name ? ` · ${entry.name}` : ""}`}
+        style={{ fontFamily: "ui-monospace, monospace", color: "#7ab87a", fontSize: 12 }}
+      >
+        {entry.isin}
+      </span>
+    );
+  }
+  if (entry.shareClassFIGI) {
+    return (
+      <span
+        title={`Bloomberg Share Class FIGI · No free ISIN source found for this ETF${entry.name ? ` · ${entry.name}` : ""}`}
+        style={{ fontFamily: "ui-monospace, monospace", color: "#6a7a9a", fontSize: 11 }}
+      >
+        BBG·{entry.shareClassFIGI}
+      </span>
+    );
+  }
+  return <span style={{ color: "#4a4830", fontStyle: "italic", fontSize: 11 }}>N/A</span>;
+}
+
+const thStyle = {
+  textAlign: "left",
+  padding: "10px 12px",
+  fontWeight: 400,
+  color: "#8a8060",
+  fontSize: 10,
+  letterSpacing: 1,
+  textTransform: "uppercase",
+  borderBottom: "1px solid #2a2820",
+  whiteSpace: "nowrap",
+};
+
+function TobScopeTable({ headers, entries, showCheckbox, selectedIndices, onToggle, emptyLabel, isinMap, isinLoading }) {
+  const tickerColIdx = headers.findIndex((h) => h.trim().toLowerCase() === "ticker");
+  const showIsin = tickerColIdx >= 0;
+  const extraCols = showIsin ? 1 : 0;
+  const colSpan = headers.length + (showCheckbox ? 1 : 0) + extraCols;
+
   return (
     <div
       style={{
@@ -204,22 +331,14 @@ function TobScopeTable({ headers, entries, showCheckbox, selectedIndices, onTogg
               </th>
             )}
             {headers.map((h, hi) => (
-              <th
-                key={`${hi}-${h}`}
-                style={{
-                  textAlign: "left",
-                  padding: "10px 12px",
-                  fontWeight: 400,
-                  color: "#8a8060",
-                  fontSize: 10,
-                  letterSpacing: 1,
-                  textTransform: "uppercase",
-                  borderBottom: "1px solid #2a2820",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {h}
-              </th>
+              <React.Fragment key={`${hi}-${h}`}>
+                <th style={thStyle}>{h}</th>
+                {hi === tickerColIdx && (
+                  <th style={{ ...thStyle, color: isinLoading ? "#5a6840" : "#8a8060" }}>
+                    ISIN{isinLoading ? " …" : ""}
+                  </th>
+                )}
+              </React.Fragment>
             ))}
           </tr>
         </thead>
@@ -245,19 +364,25 @@ function TobScopeTable({ headers, entries, showCheckbox, selectedIndices, onTogg
                 )}
                 {row.map((cell, ci) => {
                   const header = headers[ci] ?? "";
-                  const isTicker = header.toLowerCase() === "ticker";
+                  const isTicker = ci === tickerColIdx;
                   return (
-                    <td
-                      key={ci}
-                      style={{
-                        padding: "10px 12px",
-                        color: isTicker && cell ? "#c4a84a" : "#9a9070",
-                        fontFamily: isTicker && cell ? "ui-monospace, monospace" : "inherit",
-                        verticalAlign: "top",
-                      }}
-                    >
-                      {formatCellDisplay(header, cell)}
-                    </td>
+                    <React.Fragment key={ci}>
+                      <td
+                        style={{
+                          padding: "10px 12px",
+                          color: isTicker && cell ? "#c4a84a" : "#9a9070",
+                          fontFamily: isTicker && cell ? "ui-monospace, monospace" : "inherit",
+                          verticalAlign: "top",
+                        }}
+                      >
+                        {formatCellDisplay(header, cell)}
+                      </td>
+                      {isTicker && (
+                        <td style={{ padding: "10px 12px", verticalAlign: "top" }}>
+                          <IsinBadge ticker={cell?.trim() || null} isinMap={isinMap ?? {}} isinLoading={isinLoading} />
+                        </td>
+                      )}
+                    </React.Fragment>
                   );
                 })}
               </tr>
@@ -284,6 +409,10 @@ export default function BelgianTaxAgent() {
   const [tobPeriodEnd, setTobPeriodEnd] = useState("");
   const [tobSelectedIndices, setTobSelectedIndices] = useState(() => new Set());
   const [tobResult, setTobResult] = useState(null);
+
+  const [isinMap, setIsinMap] = useState({});
+  const [isinLoading, setIsinLoading] = useState(false);
+  const isinCacheRef = useRef({});
 
   const loadText = useCallback((name, text) => {
     setFileName(name);
@@ -352,6 +481,47 @@ export default function BelgianTaxAgent() {
       setTobResult(null);
     }
   }, [parsed, dateColIndex, tobScope]);
+
+  const tickerColIndex = useMemo(() => {
+    if (!parsed) return -1;
+    return parsed.headers.findIndex((h) => h.trim().toLowerCase() === "ticker");
+  }, [parsed]);
+
+  useEffect(() => {
+    if (!parsed || tickerColIndex < 0) return;
+    const allTickers = [
+      ...new Set(
+        parsed.rows
+          .map((row) => row[tickerColIndex]?.trim())
+          .filter(Boolean)
+      ),
+    ];
+    const uncached = allTickers.filter((t) => !(t in isinCacheRef.current));
+    if (!uncached.length) return;
+
+    setIsinLoading(true);
+    Promise.allSettled([
+      fetchWikidataIsins(uncached),
+      fetchOpenFigiInfo(uncached),
+    ]).then(([wdRes, figiRes]) => {
+      const wdData = wdRes.status === "fulfilled" ? wdRes.value : {};
+      const figiData = figiRes.status === "fulfilled" ? figiRes.value : {};
+      const merged = {};
+      for (const ticker of uncached) {
+        const t = ticker.toUpperCase();
+        if (wdData[t]) {
+          merged[ticker] = wdData[t];
+        } else if (figiData[t]) {
+          merged[ticker] = figiData[t];
+        } else {
+          merged[ticker] = { isin: null, name: null, source: null };
+        }
+      }
+      isinCacheRef.current = { ...isinCacheRef.current, ...merged };
+      setIsinMap((prev) => ({ ...prev, ...merged }));
+      setIsinLoading(false);
+    });
+  }, [parsed, tickerColIndex]);
 
   const { displayEntries, filterNote } = useMemo(() => {
     if (!parsed) return { displayEntries: [], filterNote: null };
@@ -755,6 +925,8 @@ export default function BelgianTaxAgent() {
                   selectedIndices={tobSelectedIndices}
                   onToggle={toggleTobRow}
                   emptyLabel="No buy/sell transactions in this month."
+                  isinMap={isinMap}
+                  isinLoading={isinLoading}
                 />
               </div>
             )}
@@ -834,6 +1006,8 @@ export default function BelgianTaxAgent() {
                       ? "Choose dates above to list trades in range."
                       : "No buy/sell transactions in this date range."
                   }
+                  isinMap={isinMap}
+                  isinLoading={isinLoading}
                 />
               </div>
             )}
@@ -862,6 +1036,8 @@ export default function BelgianTaxAgent() {
                   selectedIndices={tobSelectedIndices}
                   onToggle={toggleTobRow}
                   emptyLabel="No buy or sell rows in this file."
+                  isinMap={isinMap}
+                  isinLoading={isinLoading}
                 />
               </div>
             )}
