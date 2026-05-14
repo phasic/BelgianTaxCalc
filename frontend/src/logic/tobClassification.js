@@ -74,9 +74,8 @@ const FUND_SECURITY_TYPES = new Set([
 export function classifyInstrument(info) {
   if (!info?.name && !info?.securityType) {
     return {
-      ...TOB_ARTICLES["120,2"],
-      basis: "unknown — no instrument data, defaulted to stock",
-      unknown: true,
+      unresolved: true,
+      basis: "no instrument data — resolve ticker via OpenFIGI first",
     };
   }
 
@@ -95,15 +94,14 @@ export function classifyInstrument(info) {
   }
 
   if (!isDefinitelyFund) {
-    // Fallback: if marketSector is Equity and nothing screams "fund" → stock
+    // marketSector "equity" is a reasonable proxy for stock
     if (ms === "equity") {
-      return { ...TOB_ARTICLES["120,2"], basis: `${info.securityType} (equity)` };
+      return { ...TOB_ARTICLES["120,2"], basis: `${info.securityType} (equity sector)` };
     }
-    // Truly unknown — default to stock, flag it
+    // securityType exists but is unrecognised — cannot determine article
     return {
-      ...TOB_ARTICLES["120,2"],
-      basis: `unknown type "${info.securityType}" — defaulted to stock`,
-      unknown: true,
+      unresolved: true,
+      basis: `unrecognised securityType "${info.securityType}" — cannot determine article`,
     };
   }
 

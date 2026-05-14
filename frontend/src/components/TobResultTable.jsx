@@ -58,7 +58,7 @@ export default function TobResultTable({ headers, lineItems, instrumentNames = n
           {lineItems.map(({ sourceIndex, row, ticker, classification, eurAmount, tobAmount, capped }) => {
             const instrument = ticker ? instrumentNames.get(ticker) : null;
             const instrumentTypeLabel =
-              classification && !classification.unknown
+              classification && !classification.unresolved
                 ? classification.key === "120,2" ? "Share" : "Fund"
                 : null;
             return (
@@ -108,21 +108,29 @@ export default function TobResultTable({ headers, lineItems, instrumentNames = n
                 </td>
 
                 {/* Art. */}
-                <td style={{ padding: "10px 12px", color: "#c4a84a", whiteSpace: "nowrap", verticalAlign: "top", fontFamily: "ui-monospace, monospace", fontSize: 12 }}>
-                  {classification.art}
-                  {classification.unknown && (
-                    <div style={{ fontSize: 10, color: "#9a7040", marginTop: 2 }}>assumed</div>
+                <td style={{ padding: "10px 12px", whiteSpace: "nowrap", verticalAlign: "top", fontFamily: "ui-monospace, monospace", fontSize: 12 }}>
+                  {classification.unresolved ? (
+                    <span style={{ color: "#c04848" }}>
+                      ! unresolved
+                      <div style={{ fontSize: 10, color: "#9a5040", marginTop: 2, fontFamily: "Georgia, serif", fontStyle: "italic", maxWidth: 160, whiteSpace: "normal" }}>
+                        {classification.basis}
+                      </div>
+                    </span>
+                  ) : (
+                    <span style={{ color: "#c4a84a" }}>{classification.art}</span>
                   )}
                 </td>
 
                 {/* Rate */}
-                <td style={{ padding: "10px 12px", color: "#c0b890", whiteSpace: "nowrap", verticalAlign: "top", fontFamily: "ui-monospace, monospace", fontSize: 12 }}>
-                  {PCT(classification.rate)}
+                <td style={{ padding: "10px 12px", color: classification.unresolved ? "#4a3a30" : "#c0b890", whiteSpace: "nowrap", verticalAlign: "top", fontFamily: "ui-monospace, monospace", fontSize: 12 }}>
+                  {classification.unresolved ? "—" : PCT(classification.rate)}
                 </td>
 
                 {/* TOB amount */}
                 <td style={{ padding: "10px 12px", textAlign: "right", verticalAlign: "top", whiteSpace: "nowrap", fontFamily: "ui-monospace, monospace" }}>
-                  {tobAmount !== null ? (
+                  {classification.unresolved ? (
+                    <span style={{ color: "#c04848", fontSize: 11 }}>excluded</span>
+                  ) : tobAmount !== null ? (
                     <span style={{ color: "#e8d890" }}>
                       {EUR.format(tobAmount)}
                       {capped && (
@@ -132,7 +140,7 @@ export default function TobResultTable({ headers, lineItems, instrumentNames = n
                   ) : (
                     <span style={{ color: "#7a7460" }}>—</span>
                   )}
-                  {eurAmount !== null && (
+                  {!classification.unresolved && eurAmount !== null && (
                     <div style={{ fontSize: 10, color: "#7a7460", marginTop: 2 }}>
                       on {EUR.format(eurAmount)}
                     </div>

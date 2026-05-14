@@ -393,6 +393,25 @@ export default function TobWizard({ parsed, typeColIndex, dateColIndex, instrume
       {result && !result.error && (
         <div style={{ marginTop: 24 }}>
 
+          {/* --- Unresolved instruments error --- */}
+          {result.unresolvedTickers?.length > 0 && (
+            <div style={{ marginBottom: 16, padding: "14px 18px", background: "#1a0a0a", border: "1px solid #6a2020", borderRadius: 4 }}>
+              <div style={{ fontSize: 12, color: "#c04848", marginBottom: 8, letterSpacing: 0.5 }}>
+                {result.unresolvedTickers.length} ticker{result.unresolvedTickers.length > 1 ? "s" : ""} could not be classified and are excluded from the total
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+                {result.unresolvedTickers.map((t) => (
+                  <span key={t} style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, padding: "2px 8px", background: "#2a1010", border: "1px solid #6a2020", borderRadius: 3, color: "#e07070" }}>
+                    {t}
+                  </span>
+                ))}
+              </div>
+              <div style={{ fontSize: 11, color: "#7a5050", fontStyle: "italic" }}>
+                Resolve instrument types via OpenFIGI in the Transactions tab, then recalculate.
+              </div>
+            </div>
+          )}
+
           {/* --- Per-article summary --- */}
           <div style={{ marginBottom: 20, padding: 18, background: "#111109", border: "1px solid #3d3a28", borderRadius: 4 }}>
             <div style={{ fontSize: 11, letterSpacing: 2, textTransform: "uppercase", color: "#7a7460", marginBottom: 14 }}>

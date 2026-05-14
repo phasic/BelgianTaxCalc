@@ -140,7 +140,10 @@ export function calculateTobLineItem(entry, headers, instrumentNames) {
   const classification = classifyInstrument(info);
 
   const eurAmount = parseTotalAmountEUR(row, headers);
-  const tobRaw = eurAmount !== null ? eurAmount * classification.rate : null;
+  // Unresolved instruments have no rate — exclude from calculation entirely
+  const tobRaw = (eurAmount !== null && !classification.unresolved)
+    ? eurAmount * classification.rate
+    : null;
   const tobAmount = tobRaw !== null ? Math.min(tobRaw, classification.cap) : null;
   const capped = tobRaw !== null && tobAmount !== tobRaw;
 
@@ -159,9 +162,20 @@ export function calculateTobResult(scopedEntries, headers, instrumentNames) {
     calculateTobLineItem(e, headers, instrumentNames)
   );
 
-  // Group by article key
+  // Collect unresolved tickers (deduplicated) — these are excluded from totals
+  const unresolvedTickers = [
+    ...new Set(
+      lineItems
+        .filter((i) => i.classification.unresolved)
+        .map((i) => i.ticker)
+        .filter(Boolean)
+    ),
+  ];
+
+  // Group resolved items by article key
   const byArt = {};
   for (const item of lineItems) {
+    if (item.classification.unresolved) continue;
     const key = item.classification.key;
     if (!byArt[key]) {
       byArt[key] = {
@@ -178,5 +192,5 @@ export function calculateTobResult(scopedEntries, headers, instrumentNames) {
 
   const totalTOB = lineItems.reduce((s, i) => s + (i.tobAmount ?? 0), 0);
 
-  return { lineItems, byArt, totalTOB };
+  return { lineItems, byArt, totalTOB, unresolvedTickers };
 }

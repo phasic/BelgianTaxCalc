@@ -264,6 +264,25 @@ export default function QuickTob({
         ) : (
           <div style={{ background: "#111109", border: "1px solid #3d3a28", borderRadius: 4, overflow: "hidden" }}>
 
+            {/* Unresolved instruments error */}
+            {tobResult.unresolvedTickers?.length > 0 && (
+              <div style={{ padding: "12px 18px", background: "#1a0a0a", borderBottom: "1px solid #6a2020", display: "flex", flexDirection: "column", gap: 6 }}>
+                <div style={{ fontSize: 12, color: "#c04848", letterSpacing: 0.5 }}>
+                  {tobResult.unresolvedTickers.length} ticker{tobResult.unresolvedTickers.length > 1 ? "s" : ""} could not be classified — excluded from total
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {tobResult.unresolvedTickers.map((t) => (
+                    <span key={t} style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, padding: "2px 8px", background: "#2a1010", border: "1px solid #6a2020", borderRadius: 3, color: "#e07070" }}>
+                      {t}
+                    </span>
+                  ))}
+                </div>
+                <div style={{ fontSize: 11, color: "#7a5050", fontStyle: "italic" }}>
+                  Go to the Transactions tab and use cloud sync to resolve instrument types via OpenFIGI, then recalculate.
+                </div>
+              </div>
+            )}
+
             {/* Per-article breakdown */}
             <div style={{ padding: "18px 22px 14px" }}>
               {paidCount > 0 && (
