@@ -113,6 +113,17 @@ export async function loadSavedHistoryParsed(firestore, uid) {
   const docs = [];
   snap.forEach((d) => docs.push(d.data()));
 
+  const COLUMN_ORDER = [
+    "Date",
+    "Ticker",
+    "Type",
+    "Quantity",
+    "Price per share",
+    "Total Amount",
+    "Currency",
+    "FX Rate",
+  ];
+
   const headerSet = new Set();
   for (const data of docs) {
     const c = data.cellsByHeader;
@@ -120,10 +131,25 @@ export async function loadSavedHistoryParsed(firestore, uid) {
       Object.keys(c).forEach((h) => headerSet.add(h));
     }
   }
-  const headers = [...headerSet].sort((a, b) => a.localeCompare(b));
+  const known = COLUMN_ORDER.filter((h) => headerSet.has(h));
+  const rest = [...headerSet]
+    .filter((h) => !COLUMN_ORDER.includes(h))
+    .sort((a, b) => a.localeCompare(b));
+  const headers = [...known, ...rest];
+
+  const currencyIdx = headers.indexOf("Currency");
+  const fxRateIdx = headers.indexOf("FX Rate");
+
   const rows = docs.map((data) => {
     const c = data.cellsByHeader || {};
-    return headers.map((h) => String(c[h] ?? ""));
+    return headers.map((h, i) => {
+      const raw = String(c[h] ?? "");
+      if (i === fxRateIdx && currencyIdx !== -1) {
+        const currency = String(c["Currency"] ?? "").trim().toUpperCase();
+        if (currency === "EUR") return "—";
+      }
+      return raw;
+    });
   });
 
   return { headers, rows, docCount: docs.length };
