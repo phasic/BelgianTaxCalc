@@ -440,19 +440,28 @@ export default function App() {
         if (db && user) saveInstruments(db, user.uid, fresh);
       }
       if (!cancelled) {
-        setInstrumentNames(new Map([...fromCache, ...fromDb, ...fresh]));
+        // Seed every ticker with an empty entry so unresolvable tickers (those
+        // OpenFIGI has no data for) still appear as "unresolved" everywhere
+        // rather than being silently absent from the instruments map.
+        const allTickers = new Map(tickers.map((t) => [t, cache.get(t) ?? {}]));
+        fromCache.forEach((v, k) => allTickers.set(k, v));
+        fromDb.forEach((v, k) => allTickers.set(k, v));
+        fresh.forEach((v, k) => allTickers.set(k, v));
+        setInstrumentNames(allTickers);
       }
 
-      // ── Background re-resolution for manually-typed tickers ──
-      // If a DB entry carries a manualType flag it was set as a fallback because
-      // OpenFIGI couldn't classify it at the time. Silently retry now; if OpenFIGI
-      // succeeds, the fresh data is saved (clearing manualType) and state is updated.
+      // ── Background re-resolution for manually-typed and stub tickers ──
+      // manualType tickers: set as fallback because OpenFIGI couldn't classify.
+      // stub tickers (afterDb not in fresh): OpenFIGI returned nothing last time.
+      // Silently retry both; if OpenFIGI succeeds, save and promote to authoritative.
       const manualTickers = [...fromDb.entries()]
         .filter(([, info]) => info.manualType)
         .map(([ticker]) => ticker);
+      const stubTickers = afterDb.filter((t) => !fresh.has(t));
+      const retryTickers = [...new Set([...manualTickers, ...stubTickers])];
 
-      if (manualTickers.length) {
-        resolveTickerNames(manualTickers)
+      if (retryTickers.length) {
+        resolveTickerNames(retryTickers)
           .then((reclassified) => {
             if (!reclassified.size || cancelled) return;
             reclassified.forEach((v, k) => cache.set(k, v));
