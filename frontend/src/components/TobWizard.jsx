@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { MONTH_NAMES } from "../utils/formatters.js";
-import { collectTobRowsInScope, defaultTobMonthFromFile, calculateTobResult } from "../logic/tobCalculation.js";
+import { collectTobRowsInScope, defaultTobMonthFromFile, calculateTobResult, parseRowDate } from "../logic/tobCalculation.js";
 import { isTobType } from "../logic/transactionFilters.js";
 import TobScopeTable from "./TobScopeTable.jsx";
 import TobResultTable from "./TobResultTable.jsx";
@@ -81,6 +81,21 @@ export default function TobWizard({ parsed, typeColIndex, dateColIndex, instrume
       .map((row, sourceIndex) => ({ row, sourceIndex }))
       .filter((e) => isTobType(e.row[typeColIndex]));
   }, [parsed, typeColIndex]);
+
+  /** Min / max date strings (YYYY-MM-DD) across all TOB rows. */
+  const dateRange = useMemo(() => {
+    if (!hasDates || !candidateEntries.length) return { min: "", max: "" };
+    let min = null;
+    let max = null;
+    for (const { row } of candidateEntries) {
+      const d = parseRowDate(row[dateColIndex]);
+      if (!d) continue;
+      if (!min || d < min) min = d;
+      if (!max || d > max) max = d;
+    }
+    const fmt = (d) => d.toISOString().slice(0, 10);
+    return { min: min ? fmt(min) : "", max: max ? fmt(max) : "" };
+  }, [candidateEntries, dateColIndex, hasDates]);
 
   const scopedPreview = useMemo(() => {
     if (!parsed || typeColIndex < 0) return [];
@@ -215,7 +230,10 @@ export default function TobWizard({ parsed, typeColIndex, dateColIndex, instrume
           <label style={{ fontSize: 12, color: "#8a8060" }}>
             From{" "}
             <input
-              type="date" value={periodStart}
+              type="date"
+              value={periodStart}
+              min={dateRange.min || undefined}
+              max={dateRange.max || undefined}
               onChange={(e) => { setPeriodStart(e.target.value); setResult(null); }}
               style={{ ...inputStyle, marginLeft: 8 }}
             />
@@ -223,11 +241,36 @@ export default function TobWizard({ parsed, typeColIndex, dateColIndex, instrume
           <label style={{ fontSize: 12, color: "#8a8060" }}>
             To{" "}
             <input
-              type="date" value={periodEnd}
+              type="date"
+              value={periodEnd}
+              min={dateRange.min || undefined}
+              max={dateRange.max || undefined}
               onChange={(e) => { setPeriodEnd(e.target.value); setResult(null); }}
               style={{ ...inputStyle, marginLeft: 8 }}
             />
           </label>
+          {dateRange.min && dateRange.max && (
+            <button
+              type="button"
+              onClick={() => { setPeriodStart(dateRange.min); setPeriodEnd(dateRange.max); setResult(null); }}
+              style={{
+                padding: "8px 14px",
+                border: periodStart === dateRange.min && periodEnd === dateRange.max
+                  ? "1px solid #c4a84a" : "1px solid #2a2820",
+                borderRadius: 3,
+                background: "transparent",
+                color: periodStart === dateRange.min && periodEnd === dateRange.max
+                  ? "#c4a84a" : "#6a6450",
+                cursor: "pointer",
+                fontSize: 11,
+                letterSpacing: 1.2,
+                textTransform: "uppercase",
+                fontFamily: "Georgia, serif",
+              }}
+            >
+              Full range
+            </button>
+          )}
           {!hasDates && <span style={{ fontSize: 12, color: "#9a7040" }}>No Date column in this file.</span>}
         </div>
       )}
