@@ -1,13 +1,16 @@
 import { useMemo, useState, useEffect } from "react";
 import { isTobType, isDividendType } from "../logic/transactionFilters.js";
 import { formatCellDisplay } from "../utils/formatters.js";
-import { classifyInstrument } from "../logic/tobClassification.js";
 import DeadlineCell from "./DeadlineCell.jsx";
+import InstrumentTypeCell from "./InstrumentTypeCell.jsx";
+import { makeTransactionKey } from "../logic/tobDeadline.js";
 
 const FILTER_BUTTONS = [
-  { id: "all", label: "All" },
-  { id: "tob", label: "TOB" },
+  { id: "all",       label: "All" },
+  { id: "tob",       label: "TOB" },
   { id: "dividends", label: "Dividends" },
+  { id: "unpaid",    label: "Unpaid TOB" },
+  { id: "paid",      label: "Paid TOB" },
 ];
 
 const SORT_COL_DEFS = [
@@ -38,7 +41,7 @@ function compareCell(a, b, sortId) {
   return (a || "").localeCompare(b || "");
 }
 
-export default function TransactionsTable({ parsed, typeColIndex, viewFilter, setViewFilter, instrumentNames = new Map(), tobPaidKeys, toggleTobPaid }) {
+export default function TransactionsTable({ parsed, typeColIndex, viewFilter, setViewFilter, instrumentNames = new Map(), tobPaidKeys, toggleTobPaid, updateManualType }) {
   const [sortConfig, setSortConfig] = useState({ colIndex: null, dir: "desc" });
 
   useEffect(() => {
@@ -101,12 +104,19 @@ export default function TransactionsTable({ parsed, typeColIndex, viewFilter, se
       return { displayEntries: withIdx, filterNote: "No Type column found — filters are disabled." };
     }
     if (viewFilter === "all") return { displayEntries: withIdx, filterNote: null };
+
+    const isTob = (e) => isTobType(e.row[typeColIndex]);
+    const isPaid = (e) => tobPaidKeys?.has(makeTransactionKey(e.row, parsed.headers));
+
     const pred =
-      viewFilter === "tob"
-        ? (e) => isTobType(e.row[typeColIndex])
-        : (e) => isDividendType(e.row[typeColIndex]);
+      viewFilter === "tob"       ? isTob
+      : viewFilter === "dividends" ? (e) => isDividendType(e.row[typeColIndex])
+      : viewFilter === "paid"      ? (e) => isTob(e) && isPaid(e)
+      : viewFilter === "unpaid"    ? (e) => isTob(e) && !isPaid(e)
+      : () => true;
+
     return { displayEntries: withIdx.filter(pred), filterNote: null };
-  }, [parsed, typeColIndex, viewFilter, activeSortColIndex, activeSortDir, activeSortId]);
+  }, [parsed, typeColIndex, viewFilter, activeSortColIndex, activeSortDir, activeSortId, tobPaidKeys]);
 
   if (!parsed) return null;
 
@@ -184,7 +194,11 @@ export default function TransactionsTable({ parsed, typeColIndex, viewFilter, se
       {!filterNote && viewFilter !== "all" && (
         <div style={{ padding: "10px 18px", fontSize: 12, color: "#8a8268", borderBottom: "1px solid #2e2c1e" }}>
           Showing {displayEntries.length} of {parsed.rows.length} rows
-          {viewFilter === "tob" ? " (buy and sell trades only)" : " (dividends only)"}
+          {viewFilter === "tob"       ? " (buy and sell trades only)"
+          : viewFilter === "dividends" ? " (dividends only)"
+          : viewFilter === "paid"      ? " (TOB-paid transactions)"
+          : viewFilter === "unpaid"    ? " (unpaid buy/sell transactions)"
+          : ""}
         </div>
       )}
 
@@ -264,11 +278,6 @@ export default function TransactionsTable({ parsed, typeColIndex, viewFilter, se
               displayEntries.map(({ row, sourceIndex }, ri) => {
                 const ticker = tickerColIndex >= 0 ? (row[tickerColIndex] ?? "").trim() : "";
                 const instrumentInfo = ticker ? instrumentNames.get(ticker) : null;
-                const classification = instrumentInfo ? classifyInstrument(instrumentInfo) : null;
-                const instrumentTypeLabel =
-                  classification && !classification.unknown
-                    ? classification.key === "120,2" ? "Share" : "Fund"
-                    : null;
 
                 const typeStr = typeColIndex >= 0 ? (row[typeColIndex] ?? "") : "";
                 const isToB = isTobType(typeStr);
@@ -318,18 +327,11 @@ export default function TransactionsTable({ parsed, typeColIndex, viewFilter, se
                       }
                       return [tdEl];
                     })}
-                    <td
-                      style={{
-                        padding: "10px 12px",
-                        color: instrumentTypeLabel === "Fund" ? "#7a9870" : instrumentTypeLabel === "Share" ? "#7a8898" : "#3a3830",
-                        fontSize: 11,
-                        letterSpacing: 0.5,
-                        verticalAlign: "top",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {instrumentTypeLabel ?? "—"}
-                    </td>
+                    <InstrumentTypeCell
+                      ticker={ticker}
+                      instrumentInfo={instrumentInfo}
+                      updateManualType={updateManualType}
+                    />
                   </tr>
                 );
               })

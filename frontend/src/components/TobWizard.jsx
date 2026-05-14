@@ -86,7 +86,7 @@ function ScopeOption({ id, title, detail, active, disabled, onClick }) {
   );
 }
 
-export default function TobWizard({ parsed, typeColIndex, dateColIndex, instrumentNames = new Map(), tobPaidKeys, toggleTobPaid }) {
+export default function TobWizard({ parsed, typeColIndex, dateColIndex, instrumentNames = new Map(), tobPaidKeys, toggleTobPaid, updateManualType }) {
   const hasDates = dateColIndex >= 0;
 
   const defaultMonth = useMemo(
@@ -451,6 +451,7 @@ export default function TobWizard({ parsed, typeColIndex, dateColIndex, instrume
               dateColIndex={dateColIndex}
               tobPaidKeys={tobPaidKeys}
               toggleTobPaid={toggleTobPaid}
+              updateManualType={updateManualType}
             />
           </CollapsibleSection>
 

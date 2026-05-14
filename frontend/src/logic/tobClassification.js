@@ -12,6 +12,12 @@
  *  Q3. UCITS (European passport)?
  *      → Yes ("UCITS ETF" in name)      → art. 120, 3°  →  1.32%  (cap €4 000)
  *      → No                             → art. 120, 1°  →  1.32%  (cap €4 000)
+ *
+ * Source-of-truth priority:
+ *   1. OpenFIGI securityType / marketSector (authoritative)
+ *   2. Manual user override — only used as a last resort when OpenFIGI cannot classify.
+ *      When a manual override is stored in the DB, the app will silently retry OpenFIGI
+ *      in the background and promote the result to authoritative once resolved.
  */
 
 export const TOB_ARTICLES = {
@@ -62,70 +68,76 @@ const FUND_SECURITY_TYPES = new Set([
 ]);
 
 /**
- * Determine the TOB article for a ticker based on OpenFIGI instrument data.
+ * Determine the TOB article for a ticker based on instrument data.
  *
  * Q1 uses OpenFIGI securityType / marketSector — not name heuristics.
  * Q2 / Q3 (fund sub-type) still use the name because OpenFIGI doesn't expose
  *    distributing vs accumulating as a dedicated field.
  *
- * @param {{ name: string, securityType: string, securityType2: string, marketSector: string } | null | undefined} info
- * @returns {{ key, art, rate, cap, label, basis, unknown?: boolean }}
+ * If OpenFIGI data is absent or inconclusive, the function falls back to
+ * `info.manualType` ("stock" | "fund_dist" | "fund_acc") if present.
+ *
+ * @param {{ name?: string, securityType?: string, securityType2?: string, marketSector?: string, manualType?: string } | null | undefined} info
+ * @returns {{ key, art, rate, cap, label, basis, manual?: true, unresolved?: true }}
  */
 export function classifyInstrument(info) {
-  if (!info?.name && !info?.securityType) {
-    return {
-      unresolved: true,
-      basis: "no instrument data — resolve ticker via OpenFIGI first",
-    };
-  }
-
-  const st  = (info.securityType  ?? "").toLowerCase().trim();
-  const st2 = (info.securityType2 ?? "").toLowerCase().trim();
-  const ms  = (info.marketSector  ?? "").toLowerCase().trim();
-  const name = (info.name ?? "").toLowerCase();
+  const st  = (info?.securityType  ?? "").toLowerCase().trim();
+  const st2 = (info?.securityType2 ?? "").toLowerCase().trim();
+  const ms  = (info?.marketSector  ?? "").toLowerCase().trim();
+  const name = (info?.name ?? "").toLowerCase();
 
   // --- Q1: stock or fund? — trust OpenFIGI securityType first ---
   const isDefinitelyStock = STOCK_SECURITY_TYPES.has(st) || STOCK_SECURITY_TYPES.has(st2);
-  const isDefinitelyFund  = FUND_SECURITY_TYPES.has(st)  || FUND_SECURITY_TYPES.has(st2)
+  const isDefinitelyFund  = FUND_SECURITY_TYPES.has(st) || FUND_SECURITY_TYPES.has(st2)
     || ms === "mutual fund";
 
   if (isDefinitelyStock) {
     return { ...TOB_ARTICLES["120,2"], basis: info.securityType };
   }
 
-  if (!isDefinitelyFund) {
-    // marketSector "equity" is a reasonable proxy for stock
-    if (ms === "equity") {
-      return { ...TOB_ARTICLES["120,2"], basis: `${info.securityType} (equity sector)` };
+  if (isDefinitelyFund) {
+    // --- Q2: accumulating or distributing? (name-based, OpenFIGI has no field for this) ---
+    const isAccumulating =
+      /\bacc\b/.test(name) ||
+      name.includes("accumulat") ||
+      name.includes("capitaliz") ||
+      name.includes("capitalise") ||
+      /\bcap\b/.test(name) ||
+      name.includes("thesaurierend") ||
+      name.includes("herleggend");
+
+    // --- Q3 (if accumulating): UCITS? ---
+    const isUCITS = name.includes("ucits");
+
+    if (isAccumulating && isUCITS) {
+      return { ...TOB_ARTICLES["120,3"], basis: `${info.securityType} — UCITS accumulating` };
     }
-    // securityType exists but is unrecognised — cannot determine article
+
     return {
-      unresolved: true,
-      basis: `unrecognised securityType "${info.securityType}" — cannot determine article`,
+      ...TOB_ARTICLES["120,1"],
+      basis: isAccumulating
+        ? `${info.securityType} — accumulating (non-UCITS)`
+        : `${info.securityType} — distributing`,
     };
   }
 
-  // --- Q2: accumulating or distributing? (name-based, OpenFIGI has no field for this) ---
-  const isAccumulating =
-    /\bacc\b/.test(name) ||
-    name.includes("accumulat") ||
-    name.includes("capitaliz") ||
-    name.includes("capitalise") ||
-    /\bcap\b/.test(name) ||
-    name.includes("thesaurierend") ||
-    name.includes("herleggend");
-
-  // --- Q3 (if accumulating): UCITS? ---
-  const isUCITS = name.includes("ucits");
-
-  if (isAccumulating && isUCITS) {
-    return { ...TOB_ARTICLES["120,3"], basis: `${info.securityType} — UCITS accumulating` };
+  // marketSector "equity" is a reasonable proxy for stock
+  if (ms === "equity") {
+    return { ...TOB_ARTICLES["120,2"], basis: `${info?.securityType || "equity"} (equity sector)` };
   }
 
+  // ── OpenFIGI data absent or inconclusive — fall back to manual override ──
+  // This is the last resort; once OpenFIGI can classify the ticker the manual
+  // flag is removed from the DB and this branch is no longer reached.
+  if (info?.manualType === "stock")      return { ...TOB_ARTICLES["120,2"], basis: "manual override", manual: true };
+  if (info?.manualType === "fund_dist")  return { ...TOB_ARTICLES["120,1"], basis: "manual override", manual: true };
+  if (info?.manualType === "fund_acc")   return { ...TOB_ARTICLES["120,3"], basis: "manual override", manual: true };
+
+  // Truly unresolved — no OpenFIGI data and no manual override
   return {
-    ...TOB_ARTICLES["120,1"],
-    basis: isAccumulating
-      ? `${info.securityType} — accumulating (non-UCITS)`
-      : `${info.securityType} — distributing`,
+    unresolved: true,
+    basis: info?.securityType
+      ? `unrecognised securityType "${info.securityType}" — set type manually`
+      : "no instrument data — resolve via OpenFIGI or set type manually",
   };
 }

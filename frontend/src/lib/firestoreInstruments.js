@@ -1,10 +1,13 @@
 import {
   collection,
+  deleteField,
   doc,
   documentId,
   getDocs,
   query,
   serverTimestamp,
+  setDoc,
+  updateDoc,
   where,
   writeBatch,
 } from "firebase/firestore";
@@ -35,12 +38,13 @@ export async function fetchKnownInstruments(firestore, uid, tickers) {
     const snap = await getDocs(q);
     snap.forEach((d) => {
       const data = d.data();
-      if (data.name) {
+      if (data.name || data.manualType) {
         known.set(d.id, {
-          name: data.name,
+          name: data.name ?? "",
           securityType: data.securityType ?? "",
           securityType2: data.securityType2 ?? "",
           marketSector: data.marketSector ?? "",
+          manualType: data.manualType ?? null,
         });
       }
     });
@@ -65,6 +69,7 @@ export async function saveInstruments(firestore, uid, instruments) {
 
   for (const [ticker, { name, securityType, securityType2, marketSector }] of instruments) {
     const ref = doc(firestore, "users", uid, INSTRUMENTS_COLLECTION, ticker);
+    // Full replace (no merge) so any stale manualType flag is cleared when OpenFIGI resolves the ticker.
     batch.set(ref, { ticker, name, securityType, securityType2: securityType2 ?? "", marketSector: marketSector ?? "", resolvedAt: serverTimestamp() });
     ops++;
     if (ops >= 500) {
@@ -75,6 +80,33 @@ export async function saveInstruments(firestore, uid, instruments) {
   }
 
   if (ops > 0) await batch.commit();
+}
+
+/**
+ * Fetch all instrument docs for a user from Firestore.
+ * Returns a Map<ticker, { name, securityType, securityType2, marketSector, manualType }>.
+ *
+ * @param {import('firebase/firestore').Firestore} firestore
+ * @param {string} uid
+ * @returns {Promise<Map<string, object>>}
+ */
+export async function fetchAllInstruments(firestore, uid) {
+  const snap = await getDocs(
+    collection(firestore, "users", uid, INSTRUMENTS_COLLECTION)
+  );
+  const instruments = new Map();
+  snap.forEach((d) => {
+    const data = d.data();
+    instruments.set(d.id, {
+      name: data.name ?? "",
+      securityType: data.securityType ?? "",
+      securityType2: data.securityType2 ?? "",
+      marketSector: data.marketSector ?? "",
+      manualType: data.manualType ?? null,
+      resolvedAt: data.resolvedAt ?? null,
+    });
+  });
+  return instruments;
 }
 
 /**
@@ -101,4 +133,27 @@ export async function resolveAndSaveNewTickers(firestore, uid, tickers) {
   await saveInstruments(firestore, uid, resolved);
 
   return { resolved: resolved.size };
+}
+
+/**
+ * Save (or clear) a manual instrument type override for a single ticker.
+ *
+ * @param {import('firebase/firestore').Firestore} firestore
+ * @param {string} uid
+ * @param {string} ticker
+ * @param {"stock"|"fund_dist"|"fund_acc"|null} manualType  null = clear override
+ */
+export async function saveManualInstrumentType(firestore, uid, ticker, manualType) {
+  const ref = doc(firestore, "users", uid, INSTRUMENTS_COLLECTION, ticker);
+  if (manualType === null) {
+    // Try to remove just the manualType field; if doc doesn't exist yet, nothing to clear
+    try {
+      await updateDoc(ref, { manualType: deleteField() });
+    } catch {
+      // Doc didn't exist — nothing to do
+    }
+  } else {
+    // Merge so we don't overwrite any existing name/securityType data
+    await setDoc(ref, { ticker, manualType, updatedAt: serverTimestamp() }, { merge: true });
+  }
 }

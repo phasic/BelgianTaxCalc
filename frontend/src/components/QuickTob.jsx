@@ -46,6 +46,7 @@ export default function QuickTob({
   tobPaidKeys,
   toggleTobPaid,
   markPaidBatch,
+  updateManualType,
 }) {
   const months = useMemo(buildThreeMonths, []);
   const [selectedIdx, setSelectedIdx] = useState(1); // previous month pre-selected
@@ -357,6 +358,7 @@ export default function QuickTob({
                   dateColIndex={dateColIndex}
                   tobPaidKeys={tobPaidKeys}
                   toggleTobPaid={toggleTobPaid}
+                  updateManualType={updateManualType}
                 />
               </div>
             )}

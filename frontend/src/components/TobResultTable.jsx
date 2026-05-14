@@ -1,5 +1,6 @@
 import { formatCellDisplay } from "../utils/formatters.js";
 import DeadlineCell from "./DeadlineCell.jsx";
+import InstrumentTypeCell from "./InstrumentTypeCell.jsx";
 
 const thStyle = {
   textAlign: "left",
@@ -22,7 +23,7 @@ const EUR = new Intl.NumberFormat("nl-BE", {
 
 const PCT = (r) => `${(r * 100).toFixed(2)}%`;
 
-export default function TobResultTable({ headers, lineItems, instrumentNames = new Map(), dateColIndex = -1, tobPaidKeys, toggleTobPaid }) {
+export default function TobResultTable({ headers, lineItems, instrumentNames = new Map(), dateColIndex = -1, tobPaidKeys, toggleTobPaid, updateManualType }) {
   const currencyColIndex = headers.findIndex((h) => h.trim().toLowerCase() === "currency");
 
   return (
@@ -57,10 +58,7 @@ export default function TobResultTable({ headers, lineItems, instrumentNames = n
         <tbody>
           {lineItems.map(({ sourceIndex, row, ticker, classification, eurAmount, tobAmount, capped }) => {
             const instrument = ticker ? instrumentNames.get(ticker) : null;
-            const instrumentTypeLabel =
-              classification && !classification.unresolved
-                ? classification.key === "120,2" ? "Share" : "Fund"
-                : null;
+            const instrumentInfo = ticker ? instrumentNames.get(ticker) : null;
             return (
               <tr key={sourceIndex} style={{ borderTop: "1px solid #282618" }}>
                 {row.flatMap((cell, ci) => {
@@ -102,10 +100,12 @@ export default function TobResultTable({ headers, lineItems, instrumentNames = n
                   return [tdEl];
                 })}
 
-                {/* Instrument type */}
-                <td style={{ padding: "10px 12px", color: instrumentTypeLabel === "Fund" ? "#7a9870" : instrumentTypeLabel === "Share" ? "#7a8898" : "#3a3830", fontSize: 11, letterSpacing: 0.5, verticalAlign: "top", whiteSpace: "nowrap" }}>
-                  {instrumentTypeLabel ?? "—"}
-                </td>
+                {/* Instrument type — clickable to set manual override */}
+                <InstrumentTypeCell
+                  ticker={ticker}
+                  instrumentInfo={instrumentInfo}
+                  updateManualType={updateManualType}
+                />
 
                 {/* Art. */}
                 <td style={{ padding: "10px 12px", whiteSpace: "nowrap", verticalAlign: "top", fontFamily: "ui-monospace, monospace", fontSize: 12 }}>

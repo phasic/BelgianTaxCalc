@@ -7,9 +7,10 @@ import TobWizard from "./components/TobWizard.jsx";
 import QuickTob from "./components/QuickTob.jsx";
 import AuthBar from "./components/AuthBar.jsx";
 import CloudSyncPanel from "./components/CloudSyncPanel.jsx";
+import InstrumentList from "./components/InstrumentList.jsx";
 import { useAuth } from "./context/AuthContext.jsx";
 import { db } from "./lib/firebase.js";
-import { fetchKnownInstruments, saveInstruments, resolveAndSaveNewTickers } from "./lib/firestoreInstruments.js";
+import { fetchKnownInstruments, saveInstruments, resolveAndSaveNewTickers, saveManualInstrumentType } from "./lib/firestoreInstruments.js";
 import { resolveTickerNames } from "./lib/openFigi.js";
 import { saveParsedCsvForUser, loadSavedHistoryParsed } from "./lib/firestoreTransactions.js";
 import { loadTobPaidKeys, saveTobPaidKeys } from "./lib/firestoreTobPaid.js";
@@ -19,6 +20,7 @@ const TAB = {
   UPLOAD: "upload",
   TRANSACTIONS: "transactions",
   TOB: "tob",
+  INSTRUMENTS: "instruments",
 };
 
 function NavBar({ activeTab, setActiveTab, hasData, tobEligible, rowCount }) {
@@ -27,6 +29,7 @@ function NavBar({ activeTab, setActiveTab, hasData, tobEligible, rowCount }) {
     { id: TAB.UPLOAD, label: "Upload" },
     { id: TAB.TRANSACTIONS, label: `Transactions${rowCount > 0 ? ` (${rowCount})` : ""}`, disabled: !hasData },
     { id: TAB.TOB, label: "Calculate TOB", disabled: !tobEligible },
+    { id: TAB.INSTRUMENTS, label: "Instruments" },
   ];
 
   const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 640);
@@ -145,6 +148,7 @@ function NavBar({ activeTab, setActiveTab, hasData, tobEligible, rowCount }) {
         gap: 0,
         alignItems: "flex-end",
         overflowX: "auto",
+        overflowY: "hidden",
       }}
     >
       {tabs.map((tab) => {
@@ -231,6 +235,32 @@ export default function App() {
       return next;
     });
   }, []);
+
+  /** Update (or clear) a manual instrument type for a ticker, persisting to Firestore. */
+  const updateManualType = useCallback((ticker, manualType) => {
+    setInstrumentNames((prev) => {
+      const next = new Map(prev);
+      const existing = next.get(ticker) ?? {};
+      if (manualType === null) {
+        const { manualType: _removed, ...rest } = existing;
+        next.set(ticker, rest);
+      } else {
+        next.set(ticker, { ...existing, manualType });
+      }
+      return next;
+    });
+    // Keep session cache in sync
+    const cached = instrumentCache.current.get(ticker) ?? {};
+    if (manualType === null) {
+      const { manualType: _removed, ...rest } = cached;
+      instrumentCache.current.set(ticker, rest);
+    } else {
+      instrumentCache.current.set(ticker, { ...cached, manualType });
+    }
+    if (db && user) {
+      saveManualInstrumentType(db, user.uid, ticker, manualType).catch(() => {});
+    }
+  }, [user]);
 
   // ── Load TOB paid keys from Firestore when the user signs in ──
   // Merges cloud keys with any keys already in localStorage.
@@ -412,6 +442,31 @@ export default function App() {
       if (!cancelled) {
         setInstrumentNames(new Map([...fromCache, ...fromDb, ...fresh]));
       }
+
+      // ── Background re-resolution for manually-typed tickers ──
+      // If a DB entry carries a manualType flag it was set as a fallback because
+      // OpenFIGI couldn't classify it at the time. Silently retry now; if OpenFIGI
+      // succeeds, the fresh data is saved (clearing manualType) and state is updated.
+      const manualTickers = [...fromDb.entries()]
+        .filter(([, info]) => info.manualType)
+        .map(([ticker]) => ticker);
+
+      if (manualTickers.length) {
+        resolveTickerNames(manualTickers)
+          .then((reclassified) => {
+            if (!reclassified.size || cancelled) return;
+            reclassified.forEach((v, k) => cache.set(k, v));
+            if (db && user) saveInstruments(db, user.uid, reclassified);
+            if (!cancelled) {
+              setInstrumentNames((prev) => {
+                const next = new Map(prev);
+                reclassified.forEach((v, k) => next.set(k, v));
+                return next;
+              });
+            }
+          })
+          .catch(() => {});
+      }
     }
     load();
     return () => { cancelled = true; };
@@ -525,6 +580,7 @@ export default function App() {
             tobPaidKeys={tobPaidKeys}
             toggleTobPaid={toggleTobPaid}
             markPaidBatch={markPaidBatch}
+            updateManualType={updateManualType}
           />
         )}
 
@@ -606,6 +662,7 @@ export default function App() {
               instrumentNames={instrumentNames}
               tobPaidKeys={tobPaidKeys}
               toggleTobPaid={toggleTobPaid}
+              updateManualType={updateManualType}
             />
           </div>
         )}
@@ -619,6 +676,7 @@ export default function App() {
             instrumentNames={instrumentNames}
             tobPaidKeys={tobPaidKeys}
             toggleTobPaid={toggleTobPaid}
+            updateManualType={updateManualType}
           />
         )}
 
@@ -626,6 +684,11 @@ export default function App() {
           <div style={{ color: "#8a8268", fontSize: 14, paddingTop: 8 }}>
             Load a CSV with a Type column containing buy/sell rows first.
           </div>
+        )}
+
+        {/* ═══ INSTRUMENTS tab ═══ */}
+        {activeTab === TAB.INSTRUMENTS && (
+          <InstrumentList updateManualType={updateManualType} />
         )}
       </main>
     </div>
