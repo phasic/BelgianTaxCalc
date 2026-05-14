@@ -14,7 +14,7 @@ const CORS_HEADERS = {
  * The browser cannot call OpenFIGI directly (no CORS), so the frontend
  * routes production requests through this function instead.
  */
-exports.openFigiProxy = onRequest(async (req, res) => {
+exports.openFigiProxy = onRequest({ invoker: "public" }, async (req, res) => {
   // Set CORS headers on every response including preflight
   Object.entries(CORS_HEADERS).forEach(([k, v]) => res.set(k, v));
 
