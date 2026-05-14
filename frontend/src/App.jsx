@@ -425,25 +425,33 @@ export default function App() {
     let cancelled = false;
     async function load() {
       const cache = instrumentCache.current;
-      const fromCache = new Map(
-        tickers.filter((t) => cache.has(t)).map((t) => [t, cache.get(t)])
-      );
-      const afterCache = tickers.filter((t) => !fromCache.has(t));
-      const fromDb = db && user && afterCache.length
+      const loggedIn = Boolean(db && user);
+
+      // When logged in the DB is the source of truth — skip the cache read so
+      // Firestore is always queried and stale in-memory data cannot mask DB state.
+      // When not logged in there is no DB, so the session cache is all we have.
+      const fromCache = loggedIn
+        ? new Map()
+        : new Map(tickers.filter((t) => cache.has(t)).map((t) => [t, cache.get(t)]));
+
+      const afterCache = loggedIn ? tickers : tickers.filter((t) => !fromCache.has(t));
+
+      const fromDb = loggedIn && afterCache.length
         ? await fetchKnownInstruments(db, user.uid, afterCache)
         : new Map();
       fromDb.forEach((v, k) => cache.set(k, v));
+
       const afterDb = afterCache.filter((t) => !fromDb.has(t));
       const fresh = afterDb.length ? await resolveTickerNames(afterDb) : new Map();
       if (fresh.size) {
         fresh.forEach((v, k) => cache.set(k, v));
-        if (db && user) saveInstruments(db, user.uid, fresh);
+        if (loggedIn) saveInstruments(db, user.uid, fresh);
       }
+
       if (!cancelled) {
-        // Seed every ticker with an empty entry so unresolvable tickers (those
-        // OpenFIGI has no data for) still appear as "unresolved" everywhere
-        // rather than being silently absent from the instruments map.
-        const allTickers = new Map(tickers.map((t) => [t, cache.get(t) ?? {}]));
+        // Seed every ticker with an empty entry so tickers OpenFIGI cannot
+        // resolve still appear as "unresolved" rather than being absent.
+        const allTickers = new Map(tickers.map((t) => [t, {}]));
         fromCache.forEach((v, k) => allTickers.set(k, v));
         fromDb.forEach((v, k) => allTickers.set(k, v));
         fresh.forEach((v, k) => allTickers.set(k, v));
@@ -465,7 +473,7 @@ export default function App() {
           .then((reclassified) => {
             if (!reclassified.size || cancelled) return;
             reclassified.forEach((v, k) => cache.set(k, v));
-            if (db && user) saveInstruments(db, user.uid, reclassified);
+            if (loggedIn) saveInstruments(db, user.uid, reclassified);
             if (!cancelled) {
               setInstrumentNames((prev) => {
                 const next = new Map(prev);
