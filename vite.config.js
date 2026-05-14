@@ -12,4 +12,13 @@ export default defineConfig(({ command }) => ({
     outDir: "../docs",
     emptyOutDir: true,
   },
+  server: {
+    proxy: {
+      "/openfigi": {
+        target: "https://api.openfigi.com",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/openfigi/, ""),
+      },
+    },
+  },
 }));

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { isTobType, isDividendType } from "../logic/transactionFilters.js";
 import { formatCellDisplay } from "../utils/formatters.js";
 
@@ -8,10 +8,89 @@ const FILTER_BUTTONS = [
   { id: "dividends", label: "Dividends" },
 ];
 
-export default function TransactionsTable({ parsed, typeColIndex, viewFilter, setViewFilter }) {
+const SORT_COL_DEFS = [
+  { id: "date",   match: (h) => h.includes("date") },
+  { id: "name",   match: (h) => h === "name" || (h.includes("name") && !h.includes("username")) },
+  { id: "ticker", match: (h) => h === "ticker" || h.includes("ticker") },
+  { id: "type",   match: (h) => h === "type" || h.includes("type") },
+  { id: "amount", match: (h) => h.includes("total") || h.includes("amount") },
+];
+
+function getSortColId(header) {
+  const h = header.trim().toLowerCase();
+  for (const def of SORT_COL_DEFS) {
+    if (def.match(h)) return def.id;
+  }
+  return null;
+}
+
+function compareCell(a, b, sortId) {
+  if (sortId === "date") {
+    return new Date(a || 0).getTime() - new Date(b || 0).getTime();
+  }
+  if (sortId === "amount") {
+    const na = parseFloat((a || "").replace(/[^0-9.\-]/g, "")) || 0;
+    const nb = parseFloat((b || "").replace(/[^0-9.\-]/g, "")) || 0;
+    return na - nb;
+  }
+  return (a || "").localeCompare(b || "");
+}
+
+export default function TransactionsTable({ parsed, typeColIndex, viewFilter, setViewFilter, instrumentNames = new Map() }) {
+  const [sortConfig, setSortConfig] = useState({ colIndex: null, dir: "desc" });
+
+  useEffect(() => {
+    setSortConfig({ colIndex: null, dir: "desc" });
+  }, [parsed]);
+
+  const sortColIds = useMemo(
+    () => (parsed ? parsed.headers.map((h) => getSortColId(h)) : []),
+    [parsed]
+  );
+
+  const currencyColIndex = useMemo(
+    () => (parsed ? parsed.headers.findIndex((h) => h.trim().toLowerCase() === "currency") : -1),
+    [parsed]
+  );
+  const fxRateColIndex = useMemo(
+    () => (parsed ? parsed.headers.findIndex((h) => h.trim().toLowerCase() === "fx rate") : -1),
+    [parsed]
+  );
+
+  const dateColIndex = useMemo(
+    () => (parsed ? parsed.headers.findIndex((h) => h.trim().toLowerCase().includes("date")) : -1),
+    [parsed]
+  );
+
+  const activeSortColIndex =
+    sortConfig.colIndex !== null ? sortConfig.colIndex : dateColIndex;
+  const activeSortDir = sortConfig.dir;
+  const activeSortId = activeSortColIndex >= 0 ? sortColIds[activeSortColIndex] : null;
+
+  function handleHeaderClick(colIdx) {
+    const id = sortColIds[colIdx];
+    if (!id) return;
+    setSortConfig((prev) => ({
+      colIndex: colIdx,
+      dir: prev.colIndex === colIdx && prev.dir === "desc" ? "asc" : "desc",
+    }));
+  }
+
   const { displayEntries, filterNote } = useMemo(() => {
     if (!parsed) return { displayEntries: [], filterNote: null };
-    const withIdx = parsed.rows.map((row, sourceIndex) => ({ row, sourceIndex }));
+    let withIdx = parsed.rows.map((row, sourceIndex) => ({ row, sourceIndex }));
+
+    if (activeSortId && activeSortColIndex >= 0) {
+      withIdx = [...withIdx].sort((a, b) => {
+        const cmp = compareCell(
+          a.row[activeSortColIndex],
+          b.row[activeSortColIndex],
+          activeSortId
+        );
+        return activeSortDir === "desc" ? -cmp : cmp;
+      });
+    }
+
     if (typeColIndex === -1) {
       return { displayEntries: withIdx, filterNote: "No Type column found — filters are disabled." };
     }
@@ -21,7 +100,7 @@ export default function TransactionsTable({ parsed, typeColIndex, viewFilter, se
         ? (e) => isTobType(e.row[typeColIndex])
         : (e) => isDividendType(e.row[typeColIndex]);
     return { displayEntries: withIdx.filter(pred), filterNote: null };
-  }, [parsed, typeColIndex, viewFilter]);
+  }, [parsed, typeColIndex, viewFilter, activeSortColIndex, activeSortDir, activeSortId]);
 
   if (!parsed) return null;
 
@@ -108,24 +187,42 @@ export default function TransactionsTable({ parsed, typeColIndex, viewFilter, se
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 640 }}>
           <thead>
             <tr style={{ position: "sticky", top: 0, background: "#14140f", zIndex: 1 }}>
-              {parsed.headers.map((h, hi) => (
-                <th
-                  key={`${hi}-${h}`}
-                  style={{
-                    textAlign: "left",
-                    padding: "10px 12px",
-                    fontWeight: 400,
-                    color: "#8a8060",
-                    fontSize: 10,
-                    letterSpacing: 1,
-                    textTransform: "uppercase",
-                    borderBottom: "1px solid #2a2820",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {h}
-                </th>
-              ))}
+              {parsed.headers.map((h, hi) => {
+                const sortId = sortColIds[hi];
+                const isActive = hi === activeSortColIndex;
+                return (
+                  <th
+                    key={`${hi}-${h}`}
+                    onClick={sortId ? () => handleHeaderClick(hi) : undefined}
+                    style={{
+                      textAlign: "left",
+                      padding: "10px 12px",
+                      fontWeight: 400,
+                      color: isActive ? "#c4a84a" : sortId ? "#a89860" : "#8a8060",
+                      fontSize: 10,
+                      letterSpacing: 1,
+                      textTransform: "uppercase",
+                      borderBottom: "1px solid #2a2820",
+                      whiteSpace: "nowrap",
+                      cursor: sortId ? "pointer" : "default",
+                      userSelect: "none",
+                    }}
+                  >
+                    {h}
+                    {sortId && (
+                      <span
+                        style={{
+                          marginLeft: 5,
+                          opacity: isActive ? 1 : 0.35,
+                          fontSize: 10,
+                        }}
+                      >
+                        {isActive ? (activeSortDir === "desc" ? "↓" : "↑") : "↕"}
+                      </span>
+                    )}
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
@@ -144,6 +241,11 @@ export default function TransactionsTable({ parsed, typeColIndex, viewFilter, se
                   {row.map((cell, ci) => {
                     const header = parsed.headers[ci] ?? "";
                     const isTicker = header.toLowerCase() === "ticker";
+                    const instrument = isTicker && cell ? instrumentNames.get(cell) : null;
+                    const isEurFxRate =
+                      ci === fxRateColIndex &&
+                      currencyColIndex !== -1 &&
+                      (row[currencyColIndex] ?? "").trim().toUpperCase() === "EUR";
                     return (
                       <td
                         key={ci}
@@ -154,7 +256,21 @@ export default function TransactionsTable({ parsed, typeColIndex, viewFilter, se
                           verticalAlign: "top",
                         }}
                       >
-                        {formatCellDisplay(header, cell)}
+                        {isEurFxRate ? "—" : formatCellDisplay(header, cell)}
+                        {instrument?.name && (
+                          <div
+                            style={{
+                              fontFamily: "Georgia, serif",
+                              fontSize: 11,
+                              color: "#6a6050",
+                              marginTop: 3,
+                              fontStyle: "italic",
+                              letterSpacing: 0.2,
+                            }}
+                          >
+                            {instrument.name}
+                          </div>
+                        )}
                       </td>
                     );
                   })}

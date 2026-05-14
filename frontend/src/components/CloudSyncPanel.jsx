@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { db } from "../lib/firebase.js";
 import { saveParsedCsvForUser, loadSavedHistoryParsed } from "../lib/firestoreTransactions.js";
+import { resolveAndSaveNewTickers } from "../lib/firestoreInstruments.js";
 
 export default function CloudSyncPanel({ parsed, fileName, onHistoryLoaded }) {
   const { firebaseConfigured, user } = useAuth();
@@ -16,10 +17,26 @@ export default function CloudSyncPanel({ parsed, fileName, onHistoryLoaded }) {
     setSaveMsg(null);
     try {
       const res = await saveParsedCsvForUser(db, user.uid, parsed, fileName ?? "");
+
+      const tickerColIdx = parsed.headers.findIndex(
+        (h) => h.trim().toLowerCase() === "ticker"
+      );
+      let resolvedCount = 0;
+      if (tickerColIdx !== -1) {
+        const tickers = parsed.rows
+          .map((row) => (row[tickerColIdx] ?? "").trim())
+          .filter(Boolean);
+        const { resolved } = await resolveAndSaveNewTickers(db, user.uid, tickers);
+        resolvedCount = resolved;
+      }
+
       setSaveMsg(
-        `Saved ${res.added} new row${res.added === 1 ? "" : "s"}. Skipped ${res.skippedExisting} already stored. ` +
+        `Saved ${res.added} new row${res.added === 1 ? "" : "s"}. Skipped ${res.skippedExisting} already stored.` +
           (res.skippedDuplicateInFile
-            ? `${res.skippedDuplicateInFile} duplicate line${res.skippedDuplicateInFile === 1 ? "" : "s"} in this file ignored.`
+            ? ` ${res.skippedDuplicateInFile} duplicate line${res.skippedDuplicateInFile === 1 ? "" : "s"} in this file ignored.`
+            : "") +
+          (resolvedCount > 0
+            ? ` Resolved ${resolvedCount} new instrument name${resolvedCount === 1 ? "" : "s"} via OpenFIGI.`
             : "")
       );
     } catch (e) {

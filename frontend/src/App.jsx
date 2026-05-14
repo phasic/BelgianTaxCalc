@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { parseRevolutCsv } from "./utils/csvParser.js";
 import { findTypeColumnIndex, findDateColumnIndex } from "./logic/transactionFilters.js";
 import FileDropZone from "./components/FileDropZone.jsx";
@@ -7,6 +7,9 @@ import TobWizard from "./components/TobWizard.jsx";
 import AuthBar from "./components/AuthBar.jsx";
 import CloudSyncPanel from "./components/CloudSyncPanel.jsx";
 import { useAuth } from "./context/AuthContext.jsx";
+import { db } from "./lib/firebase.js";
+import { fetchKnownInstruments, saveInstruments } from "./lib/firestoreInstruments.js";
+import { resolveTickerNames } from "./lib/openFigi.js";
 
 export default function App() {
   const { firebaseConfigured, user } = useAuth();
@@ -18,6 +21,10 @@ export default function App() {
   const [historyParsed, setHistoryParsed] = useState(null);
   const [historyDocCount, setHistoryDocCount] = useState(0);
   const [dataSource, setDataSource] = useState("file");
+  const [instrumentNames, setInstrumentNames] = useState(new Map());
+  // Session-level cache: persists across CSV/history switches so we never
+  // call OpenFIGI twice for the same ticker within one browser session.
+  const instrumentCache = useRef(new Map());
 
   const displayParsed = dataSource === "history" && historyParsed ? historyParsed : parsed;
   const typeColIndex = displayParsed ? findTypeColumnIndex(displayParsed.headers) : -1;
@@ -74,6 +81,66 @@ export default function App() {
     if (!displayParsed) return;
     if (dateColIndex < 0 && showTobWizard) setShowTobWizard(false);
   }, [displayParsed, dateColIndex, showTobWizard]);
+
+  useEffect(() => {
+    if (!displayParsed) {
+      setInstrumentNames(new Map());
+      return;
+    }
+    const tickerIdx = displayParsed.headers.findIndex(
+      (h) => h.trim().toLowerCase() === "ticker"
+    );
+    if (tickerIdx === -1) {
+      setInstrumentNames(new Map());
+      return;
+    }
+    const tickers = [
+      ...new Set(
+        displayParsed.rows
+          .map((row) => (row[tickerIdx] ?? "").trim())
+          .filter(Boolean)
+      ),
+    ];
+    if (!tickers.length) {
+      setInstrumentNames(new Map());
+      return;
+    }
+
+    let cancelled = false;
+    async function load() {
+      const cache = instrumentCache.current;
+
+      // 1. What's already in the session cache?
+      const fromCache = new Map(
+        tickers.filter((t) => cache.has(t)).map((t) => [t, cache.get(t)])
+      );
+      const afterCache = tickers.filter((t) => !fromCache.has(t));
+
+      // 2. For the rest, check Firestore (when signed in)
+      const fromDb = db && user && afterCache.length
+        ? await fetchKnownInstruments(db, user.uid, afterCache)
+        : new Map();
+      fromDb.forEach((v, k) => cache.set(k, v));
+      const afterDb = afterCache.filter((t) => !fromDb.has(t));
+
+      // 3. Only call OpenFIGI for what's still unknown
+      const fresh = afterDb.length
+        ? await resolveTickerNames(afterDb)
+        : new Map();
+
+      // 4. Persist fresh resolutions to Firestore and session cache
+      if (fresh.size) {
+        fresh.forEach((v, k) => cache.set(k, v));
+        if (db && user) saveInstruments(db, user.uid, fresh);
+      }
+
+      if (!cancelled) {
+        setInstrumentNames(new Map([...fromCache, ...fromDb, ...fresh]));
+      }
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [displayParsed, user]);
 
   const showDataToggle = Boolean(user && (parsed || historyParsed));
 
@@ -245,6 +312,7 @@ export default function App() {
             typeColIndex={typeColIndex}
             viewFilter={viewFilter}
             setViewFilter={setViewFilter}
+            instrumentNames={instrumentNames}
           />
         )}
       </main>
