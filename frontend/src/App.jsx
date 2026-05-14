@@ -144,6 +144,19 @@ export default function App() {
     return () => { cancelled = true; };
   }, [user]);
 
+  // ── Auto-load cloud history when the user signs in ──
+  useEffect(() => {
+    if (!db || !user) return;
+    reloadHistory().catch(() => {});
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Auto-switch to cloud history as the data source when signed in with no CSV ──
+  useEffect(() => {
+    if (user && historyParsed && !parsed) {
+      setDataSource("history");
+    }
+  }, [user, historyParsed, parsed]);
+
   // ── Debounce-save tobPaidKeys to Firestore on every change ──
   useEffect(() => {
     if (!db || !user) return;
@@ -349,7 +362,7 @@ export default function App() {
       <NavBar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        hasData={Boolean(displayParsed)}
+        hasData={Boolean(displayParsed) || Boolean(historyParsed)}
         tobEligible={tobEligible}
         rowCount={rowCount}
       />
@@ -428,6 +441,11 @@ export default function App() {
         )}
 
         {/* ═══ TRANSACTIONS tab ═══ */}
+        {activeTab === TAB.TRANSACTIONS && !displayParsed && historyParsed && (
+          <p style={{ color: "#8a8268", fontSize: 13, padding: "40px 0", textAlign: "center" }}>
+            Loading transactions…
+          </p>
+        )}
         {activeTab === TAB.TRANSACTIONS && displayParsed && (
           <div>
             {showDataToggle && (
