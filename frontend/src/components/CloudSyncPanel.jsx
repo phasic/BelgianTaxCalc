@@ -4,12 +4,14 @@ import { db } from "../lib/firebase.js";
 import { saveParsedCsvForUser, loadSavedHistoryParsed } from "../lib/firestoreTransactions.js";
 import { resolveAndSaveNewTickers } from "../lib/firestoreInstruments.js";
 
-export default function CloudSyncPanel({ parsed, fileName, onHistoryLoaded }) {
+export default function CloudSyncPanel({ parsed, fileName, onHistoryLoaded, historyParsed }) {
   const { firebaseConfigured, user } = useAuth();
   const [saveMsg, setSaveMsg] = useState(null);
   const [saveBusy, setSaveBusy] = useState(false);
   const [loadBusy, setLoadBusy] = useState(false);
   const [loadErr, setLoadErr] = useState(null);
+  const [enrichBusy, setEnrichBusy] = useState(false);
+  const [enrichMsg, setEnrichMsg] = useState(null);
 
   const onSave = useCallback(async () => {
     if (!db || !user || !parsed) return;
@@ -50,6 +52,7 @@ export default function CloudSyncPanel({ parsed, fileName, onHistoryLoaded }) {
     if (!db || !user) return;
     setLoadBusy(true);
     setLoadErr(null);
+    setEnrichMsg(null);
     try {
       const merged = await loadSavedHistoryParsed(db, user.uid);
       onHistoryLoaded(merged);
@@ -59,6 +62,38 @@ export default function CloudSyncPanel({ parsed, fileName, onHistoryLoaded }) {
       setLoadBusy(false);
     }
   }, [user, onHistoryLoaded]);
+
+  const onEnrich = useCallback(async () => {
+    if (!db || !user || !historyParsed) return;
+    setEnrichBusy(true);
+    setEnrichMsg(null);
+    try {
+      const tickerIdx = historyParsed.headers.findIndex(
+        (h) => h.trim().toLowerCase() === "ticker"
+      );
+      if (tickerIdx === -1) {
+        setEnrichMsg("No Ticker column found in loaded history.");
+        return;
+      }
+      const tickers = [
+        ...new Set(
+          historyParsed.rows
+            .map((row) => (row[tickerIdx] ?? "").trim())
+            .filter(Boolean)
+        ),
+      ];
+      const { resolved } = await resolveAndSaveNewTickers(db, user.uid, tickers);
+      setEnrichMsg(
+        resolved > 0
+          ? `Resolved and saved ${resolved} new instrument name${resolved === 1 ? "" : "s"} to the database.`
+          : "All instrument names are already up to date."
+      );
+    } catch (e) {
+      setEnrichMsg(e instanceof Error ? e.message : String(e));
+    } finally {
+      setEnrichBusy(false);
+    }
+  }, [user, historyParsed]);
 
   if (!firebaseConfigured) return null;
 
@@ -147,6 +182,46 @@ export default function CloudSyncPanel({ parsed, fileName, onHistoryLoaded }) {
           {loadBusy ? "Loading…" : "Load full history from cloud"}
         </button>
       </div>
+
+      {historyParsed && (
+        <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #1e1c14" }}>
+          <div style={{ fontSize: 11, letterSpacing: 1.5, textTransform: "uppercase", color: "#5a5540", marginBottom: 10 }}>
+            Instrument names
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+            <button
+              type="button"
+              disabled={enrichBusy}
+              onClick={onEnrich}
+              style={{
+                padding: "10px 18px",
+                border: "1px solid #3d4820",
+                borderRadius: 4,
+                background: "#14140f",
+                color: enrichBusy ? "#4a5035" : "#8a9070",
+                cursor: enrichBusy ? "wait" : "pointer",
+                fontSize: 12,
+                letterSpacing: 1.5,
+                textTransform: "uppercase",
+                fontFamily: "Georgia, serif",
+              }}
+            >
+              {enrichBusy ? "Resolving…" : "Resolve & save instrument names"}
+            </button>
+          </div>
+          {enrichMsg && (
+            <div
+              style={{
+                fontSize: 12,
+                color: enrichMsg.startsWith("Resolved and saved") ? "#7a9a70" : "#9a9070",
+                marginTop: 10,
+              }}
+            >
+              {enrichMsg}
+            </div>
+          )}
+        </div>
+      )}
 
       {saveMsg && (
         <div

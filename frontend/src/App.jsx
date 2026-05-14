@@ -193,7 +193,7 @@ export default function App() {
 
         <FileDropZone parsed={parsed} fileName={fileName} onFile={onFile} />
 
-        {firebaseConfigured && <CloudSyncPanel parsed={parsed} fileName={fileName} onHistoryLoaded={onHistoryLoaded} />}
+        {firebaseConfigured && <CloudSyncPanel parsed={parsed} fileName={fileName} onHistoryLoaded={onHistoryLoaded} historyParsed={historyParsed} />}
 
         {error && (
           <div
