@@ -23,11 +23,116 @@ const TAB = {
 
 function NavBar({ activeTab, setActiveTab, hasData, tobEligible, rowCount }) {
   const tabs = [
-    { id: TAB.QUICK, label: "⚡ Quick TOB" },
+    { id: TAB.QUICK, label: "Quick TOB" },
     { id: TAB.UPLOAD, label: "Upload" },
     { id: TAB.TRANSACTIONS, label: `Transactions${rowCount > 0 ? ` (${rowCount})` : ""}`, disabled: !hasData },
     { id: TAB.TOB, label: "Calculate TOB", disabled: !tobEligible },
   ];
+
+  const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 640);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 639px)");
+    const handler = (e) => { setIsMobile(e.matches); if (!e.matches) setMenuOpen(false); };
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [menuOpen]);
+
+  const activeLabel = tabs.find((t) => t.id === activeTab)?.label ?? "";
+
+  if (isMobile) {
+    return (
+      <nav
+        ref={menuRef}
+        style={{ width: "100%", borderBottom: "1px solid #3d3a28", background: "#111109", position: "relative" }}
+      >
+        {/* Hamburger trigger */}
+        <button
+          type="button"
+          onClick={() => setMenuOpen((v) => !v)}
+          style={{
+            width: "100%",
+            padding: "14px 20px",
+            background: "transparent",
+            border: "none",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            cursor: "pointer",
+            color: "#c4a84a",
+            fontSize: 12,
+            letterSpacing: 1.5,
+            textTransform: "uppercase",
+            fontFamily: "Georgia, serif",
+          }}
+        >
+          <span>{activeLabel}</span>
+          <span style={{ display: "flex", flexDirection: "column", gap: 4, width: 18 }}>
+            {[0, 1, 2].map((i) => (
+              <span key={i} style={{ display: "block", height: 1, background: menuOpen ? "#c4a84a" : "#8a7a50", transition: "background 0.15s" }} />
+            ))}
+          </span>
+        </button>
+
+        {/* Dropdown */}
+        {menuOpen && (
+          <div
+            style={{
+              position: "absolute",
+              top: "100%",
+              left: 0,
+              right: 0,
+              background: "#111109",
+              border: "1px solid #3d3a28",
+              borderTop: "none",
+              zIndex: 100,
+            }}
+          >
+            {tabs.map((tab) => {
+              const active = activeTab === tab.id;
+              const disabled = tab.disabled;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => { if (!disabled) { setActiveTab(tab.id); setMenuOpen(false); } }}
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    textAlign: "left",
+                    padding: "15px 20px",
+                    background: active ? "#1a180a" : "transparent",
+                    border: "none",
+                    borderLeft: active ? "3px solid #c4a84a" : "3px solid transparent",
+                    borderBottom: "1px solid #2a2818",
+                    color: active ? "#c4a84a" : disabled ? "#4a4535" : "#a89870",
+                    cursor: disabled ? "not-allowed" : "pointer",
+                    fontSize: 12,
+                    letterSpacing: 1.5,
+                    textTransform: "uppercase",
+                    fontFamily: "Georgia, serif",
+                  }}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </nav>
+    );
+  }
 
   return (
     <nav
@@ -39,6 +144,7 @@ function NavBar({ activeTab, setActiveTab, hasData, tobEligible, rowCount }) {
         display: "flex",
         gap: 0,
         alignItems: "flex-end",
+        overflowX: "auto",
       }}
     >
       {tabs.map((tab) => {
@@ -323,6 +429,7 @@ export default function App() {
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
+        overflowX: "hidden",
       }}
     >
       {/* ── Header ── */}
