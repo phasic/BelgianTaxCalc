@@ -410,9 +410,20 @@ export default function BelgianTaxAgent() {
   const [tobSelectedIndices, setTobSelectedIndices] = useState(() => new Set());
   const [tobResult, setTobResult] = useState(null);
 
-  const [isinMap, setIsinMap] = useState({});
+  const isinCacheRef = useRef(() => {
+    try {
+      const stored = localStorage.getItem("btc_isin_cache");
+      return stored ? JSON.parse(stored) : {};
+    } catch {
+      return {};
+    }
+  });
+  // Initialise as a plain object, not the lazy-init function
+  if (typeof isinCacheRef.current === "function") {
+    isinCacheRef.current = isinCacheRef.current();
+  }
+  const [isinMap, setIsinMap] = useState(() => ({ ...isinCacheRef.current }));
   const [isinLoading, setIsinLoading] = useState(false);
-  const isinCacheRef = useRef({});
 
   const loadText = useCallback((name, text) => {
     setFileName(name);
@@ -517,8 +528,14 @@ export default function BelgianTaxAgent() {
           merged[ticker] = { isin: null, name: null, source: null };
         }
       }
-      isinCacheRef.current = { ...isinCacheRef.current, ...merged };
-      setIsinMap((prev) => ({ ...prev, ...merged }));
+      const updated = { ...isinCacheRef.current, ...merged };
+      isinCacheRef.current = updated;
+      try {
+        localStorage.setItem("btc_isin_cache", JSON.stringify(updated));
+      } catch {
+        /* storage quota exceeded — ignore */
+      }
+      setIsinMap(updated);
       setIsinLoading(false);
     });
   }, [parsed, tickerColIndex]);
