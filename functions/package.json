@@ -1,9 +1,12 @@
 {
   "name": "belgian-tax-calc-functions",
   "description": "Cloud Functions for BelgianTaxCalc",
-  "engines": { "node": "20" },
+  "engines": {
+    "node": "20"
+  },
   "main": "index.js",
   "dependencies": {
+    "firebase-admin": "^13.9.0",
     "firebase-functions": "^6.0.0"
   },
   "private": true

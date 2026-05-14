@@ -6,6 +6,19 @@ const OPENFIGI_URL = import.meta.env.DEV
   : import.meta.env.VITE_OPENFIGI_PROXY_URL;
 const BATCH_SIZE = 10; // max items per OpenFIGI request
 
+import { auth } from "./firebase.js";
+
+/** Get a Bearer token for the current Firebase user, or null in dev/unauthenticated. */
+async function getAuthHeader() {
+  if (import.meta.env.DEV) return null; // dev uses Vite proxy, no auth needed
+  try {
+    const token = await auth?.currentUser?.getIdToken();
+    return token ? `Bearer ${token}` : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Resolve a list of ticker symbols to instrument names via the OpenFIGI API.
  * Returns a Map<ticker, { name, securityType }> for successfully resolved tickers.
@@ -19,16 +32,20 @@ export async function resolveTickerNames(tickers) {
   if (!tickers.length) return result;
 
   const unique = [...new Set(tickers.filter(Boolean))];
+  const authHeader = await getAuthHeader();
 
   for (let i = 0; i < unique.length; i += BATCH_SIZE) {
     const batch = unique.slice(i, i + BATCH_SIZE);
     const body = batch.map((t) => ({ idType: "TICKER", idValue: t }));
 
+    const headers = { "Content-Type": "application/json" };
+    if (authHeader) headers["Authorization"] = authHeader;
+
     let response;
     try {
       response = await fetch(OPENFIGI_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify(body),
       });
     } catch {
