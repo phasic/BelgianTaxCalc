@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { isTobType, isDividendType } from "../logic/transactionFilters.js";
 import { formatCellDisplay } from "../utils/formatters.js";
+import { classifyInstrument } from "../logic/tobClassification.js";
 
 const FILTER_BUTTONS = [
   { id: "all", label: "All" },
@@ -54,6 +55,10 @@ export default function TransactionsTable({ parsed, typeColIndex, viewFilter, se
   );
   const fxRateColIndex = useMemo(
     () => (parsed ? parsed.headers.findIndex((h) => h.trim().toLowerCase() === "fx rate") : -1),
+    [parsed]
+  );
+  const tickerColIndex = useMemo(
+    () => (parsed ? parsed.headers.findIndex((h) => h.trim().toLowerCase() === "ticker") : -1),
     [parsed]
   );
 
@@ -188,6 +193,7 @@ export default function TransactionsTable({ parsed, typeColIndex, viewFilter, se
           <thead>
             <tr style={{ position: "sticky", top: 0, background: "#14140f", zIndex: 1 }}>
               {parsed.headers.map((h, hi) => {
+                if (hi === currencyColIndex) return null;
                 const sortId = sortColIds[hi];
                 const isActive = hi === activeSortColIndex;
                 return (
@@ -223,59 +229,97 @@ export default function TransactionsTable({ parsed, typeColIndex, viewFilter, se
                   </th>
                 );
               })}
+              <th
+                style={{
+                  textAlign: "left",
+                  padding: "10px 12px",
+                  fontWeight: 400,
+                  color: "#8a8060",
+                  fontSize: 10,
+                  letterSpacing: 1,
+                  textTransform: "uppercase",
+                  borderBottom: "1px solid #2a2820",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Instrument
+              </th>
             </tr>
           </thead>
           <tbody>
             {displayEntries.length === 0 ? (
               <tr>
                 <td
-                  colSpan={parsed.headers.length}
+                  colSpan={parsed.headers.length - (currencyColIndex >= 0 ? 1 : 0) + 1}
                   style={{ padding: "28px 16px", textAlign: "center", color: "#6a6450", fontSize: 13 }}
                 >
                   {viewFilter === "all" ? "No data rows in this file." : "No rows match this filter."}
                 </td>
               </tr>
             ) : (
-              displayEntries.map(({ row, sourceIndex }, ri) => (
-                <tr key={`${sourceIndex}-${ri}`} style={{ borderTop: "1px solid #1a1810" }}>
-                  {row.map((cell, ci) => {
-                    const header = parsed.headers[ci] ?? "";
-                    const isTicker = header.toLowerCase() === "ticker";
-                    const instrument = isTicker && cell ? instrumentNames.get(cell) : null;
-                    const isEurFxRate =
-                      ci === fxRateColIndex &&
-                      currencyColIndex !== -1 &&
-                      (row[currencyColIndex] ?? "").trim().toUpperCase() === "EUR";
-                    return (
-                      <td
-                        key={ci}
-                        style={{
-                          padding: "10px 12px",
-                          color: isTicker && cell ? "#c4a84a" : "#9a9070",
-                          fontFamily: isTicker && cell ? "ui-monospace, monospace" : "inherit",
-                          verticalAlign: "top",
-                        }}
-                      >
-                        {isEurFxRate ? "—" : formatCellDisplay(header, cell)}
-                        {instrument?.name && (
-                          <div
-                            style={{
-                              fontFamily: "Georgia, serif",
-                              fontSize: 11,
-                              color: "#6a6050",
-                              marginTop: 3,
-                              fontStyle: "italic",
-                              letterSpacing: 0.2,
-                            }}
-                          >
-                            {instrument.name}
-                          </div>
-                        )}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))
+              displayEntries.map(({ row, sourceIndex }, ri) => {
+                const ticker = tickerColIndex >= 0 ? (row[tickerColIndex] ?? "").trim() : "";
+                const instrumentInfo = ticker ? instrumentNames.get(ticker) : null;
+                const classification = instrumentInfo ? classifyInstrument(instrumentInfo) : null;
+                const instrumentTypeLabel =
+                  classification && !classification.unknown
+                    ? classification.key === "120,2" ? "Share" : "Fund"
+                    : null;
+
+                return (
+                  <tr key={`${sourceIndex}-${ri}`} style={{ borderTop: "1px solid #1a1810" }}>
+                    {row.map((cell, ci) => {
+                      if (ci === currencyColIndex) return null;
+                      const header = parsed.headers[ci] ?? "";
+                      const isTicker = header.toLowerCase() === "ticker";
+                      const instrument = isTicker && cell ? instrumentNames.get(cell) : null;
+                      const isEurFxRate =
+                        ci === fxRateColIndex &&
+                        currencyColIndex !== -1 &&
+                        (row[currencyColIndex] ?? "").trim().toUpperCase() === "EUR";
+                      return (
+                        <td
+                          key={ci}
+                          style={{
+                            padding: "10px 12px",
+                            color: isTicker && cell ? "#c4a84a" : "#9a9070",
+                            fontFamily: isTicker && cell ? "ui-monospace, monospace" : "inherit",
+                            verticalAlign: "top",
+                          }}
+                        >
+                          {isEurFxRate ? "—" : formatCellDisplay(header, cell)}
+                          {instrument?.name && (
+                            <div
+                              style={{
+                                fontFamily: "Georgia, serif",
+                                fontSize: 11,
+                                color: "#6a6050",
+                                marginTop: 3,
+                                fontStyle: "italic",
+                                letterSpacing: 0.2,
+                              }}
+                            >
+                              {instrument.name}
+                            </div>
+                          )}
+                        </td>
+                      );
+                    })}
+                    <td
+                      style={{
+                        padding: "10px 12px",
+                        color: instrumentTypeLabel === "Fund" ? "#7a9870" : instrumentTypeLabel === "Share" ? "#7a8898" : "#3a3830",
+                        fontSize: 11,
+                        letterSpacing: 0.5,
+                        verticalAlign: "top",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {instrumentTypeLabel ?? "—"}
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

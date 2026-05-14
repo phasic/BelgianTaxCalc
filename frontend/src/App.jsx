@@ -303,7 +303,7 @@ export default function App() {
         )}
 
         {showTobWizard && tobEligible && (
-          <TobWizard parsed={displayParsed} typeColIndex={typeColIndex} dateColIndex={dateColIndex} />
+          <TobWizard parsed={displayParsed} typeColIndex={typeColIndex} dateColIndex={dateColIndex} instrumentNames={instrumentNames} />
         )}
 
         {displayParsed && !showTobWizard && (

@@ -1,4 +1,5 @@
 import { formatCellDisplay } from "../utils/formatters.js";
+import { classifyInstrument } from "../logic/tobClassification.js";
 
 const thStyle = {
   textAlign: "left",
@@ -19,8 +20,12 @@ export default function TobScopeTable({
   selectedIndices,
   onToggle,
   emptyLabel,
+  instrumentNames = new Map(),
 }) {
-  const colSpan = headers.length + (showCheckbox ? 1 : 0);
+  const currencyColIndex = headers.findIndex((h) => h.trim().toLowerCase() === "currency");
+  const tickerColIndex = headers.findIndex((h) => h.trim().toLowerCase() === "ticker");
+  const visibleColCount = headers.length - (currencyColIndex >= 0 ? 1 : 0) + 1;
+  const colSpan = visibleColCount + (showCheckbox ? 1 : 0);
 
   return (
     <div
@@ -49,11 +54,15 @@ export default function TobScopeTable({
                 Include
               </th>
             )}
-            {headers.map((h, hi) => (
-              <th key={`${hi}-${h}`} style={thStyle}>
-                {h}
-              </th>
-            ))}
+            {headers.map((h, hi) => {
+              if (hi === currencyColIndex) return null;
+              return (
+                <th key={`${hi}-${h}`} style={thStyle}>
+                  {h}
+                </th>
+              );
+            })}
+            <th style={thStyle}>Instrument</th>
           </tr>
         </thead>
         <tbody>
@@ -67,37 +76,60 @@ export default function TobScopeTable({
               </td>
             </tr>
           ) : (
-            entries.map(({ sourceIndex, row }) => (
-              <tr key={sourceIndex} style={{ borderTop: "1px solid #1a1810" }}>
-                {showCheckbox && (
-                  <td style={{ textAlign: "center", verticalAlign: "middle", padding: "8px" }}>
-                    <input
-                      type="checkbox"
-                      checked={selectedIndices.has(sourceIndex)}
-                      onChange={() => onToggle(sourceIndex)}
-                      aria-label={`Include row ${sourceIndex + 1} in TOB scope`}
-                    />
-                  </td>
-                )}
-                {row.map((cell, ci) => {
-                  const header = headers[ci] ?? "";
-                  const isTicker = header.toLowerCase() === "ticker";
-                  return (
-                    <td
-                      key={ci}
-                      style={{
-                        padding: "10px 12px",
-                        color: isTicker && cell ? "#c4a84a" : "#9a9070",
-                        fontFamily: isTicker && cell ? "ui-monospace, monospace" : "inherit",
-                        verticalAlign: "top",
-                      }}
-                    >
-                      {formatCellDisplay(header, cell)}
+            entries.map(({ sourceIndex, row }) => {
+              const ticker = tickerColIndex >= 0 ? (row[tickerColIndex] ?? "").trim() : "";
+              const instrumentInfo = ticker ? instrumentNames.get(ticker) : null;
+              const classification = instrumentInfo ? classifyInstrument(instrumentInfo) : null;
+              const instrumentTypeLabel =
+                classification && !classification.unknown
+                  ? classification.key === "120,2" ? "Share" : "Fund"
+                  : null;
+
+              return (
+                <tr key={sourceIndex} style={{ borderTop: "1px solid #1a1810" }}>
+                  {showCheckbox && (
+                    <td style={{ textAlign: "center", verticalAlign: "middle", padding: "8px" }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedIndices.has(sourceIndex)}
+                        onChange={() => onToggle(sourceIndex)}
+                        aria-label={`Include row ${sourceIndex + 1} in TOB scope`}
+                      />
                     </td>
-                  );
-                })}
-              </tr>
-            ))
+                  )}
+                  {row.map((cell, ci) => {
+                    if (ci === currencyColIndex) return null;
+                    const header = headers[ci] ?? "";
+                    const isTicker = header.toLowerCase() === "ticker";
+                    return (
+                      <td
+                        key={ci}
+                        style={{
+                          padding: "10px 12px",
+                          color: isTicker && cell ? "#c4a84a" : "#9a9070",
+                          fontFamily: isTicker && cell ? "ui-monospace, monospace" : "inherit",
+                          verticalAlign: "top",
+                        }}
+                      >
+                        {formatCellDisplay(header, cell)}
+                      </td>
+                    );
+                  })}
+                  <td
+                    style={{
+                      padding: "10px 12px",
+                      color: instrumentTypeLabel === "Fund" ? "#7a9870" : instrumentTypeLabel === "Share" ? "#7a8898" : "#3a3830",
+                      fontSize: 11,
+                      letterSpacing: 0.5,
+                      verticalAlign: "top",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {instrumentTypeLabel ?? "—"}
+                  </td>
+                </tr>
+              );
+            })
           )}
         </tbody>
       </table>

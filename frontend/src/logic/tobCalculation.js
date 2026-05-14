@@ -1,4 +1,5 @@
 import { isTobType } from "./transactionFilters.js";
+import { classifyInstrument, TOB_ARTICLES } from "./tobClassification.js";
 
 export function parseRowDate(cell) {
   if (!cell) return null;
@@ -70,4 +71,112 @@ export function collectTobRowsInScope(parsed, typeColIndex, dateColIndex, scope,
     out.push({ sourceIndex, row });
   }
   return out;
+}
+
+/**
+ * Parse a "Total Amount" cell like "USD 215.03" or "EUR 200" into a plain number.
+ * Returns null when the cell can't be parsed.
+ */
+export function parseCurrencyAmount(cell) {
+  if (!cell) return null;
+  const match = String(cell).match(/[\d]+(?:[.,]\d+)*/);
+  if (!match) return null;
+  return parseFloat(match[0].replace(",", "."));
+}
+
+/**
+ * Convert a transaction's total amount to EUR using the FX rate column.
+ * FX rate in the Revolut CSV = units of foreign currency per 1 EUR.
+ *
+ * @returns {number | null}
+ */
+export function parseTotalAmountEUR(row, headers) {
+  const idx = (key) =>
+    headers.findIndex((h) => h.trim().toLowerCase() === key.toLowerCase());
+
+  const totalIdx = idx("Total Amount");
+  const fxIdx    = idx("FX Rate");
+  const currIdx  = idx("Currency");
+
+  const totalCell = row[totalIdx] ?? "";
+  const fxCell    = row[fxIdx] ?? "";
+  const currency  = (row[currIdx] ?? "").trim().toUpperCase();
+
+  const amount = parseCurrencyAmount(totalCell);
+  if (amount === null) return null;
+
+  if (currency === "EUR" || fxCell === "—" || !fxCell) return Math.abs(amount);
+
+  const fx = parseFloat(fxCell);
+  if (!fx || fx <= 0) return null;
+
+  return Math.abs(amount) / fx;
+}
+
+/**
+ * For a single in-scope row, compute its TOB line item.
+ *
+ * @param {{ sourceIndex: number, row: string[] }} entry
+ * @param {string[]} headers
+ * @param {Map<string, { name: string, securityType: string }>} instrumentNames
+ * @returns {{
+ *   sourceIndex: number,
+ *   row: string[],
+ *   ticker: string,
+ *   classification: object,
+ *   eurAmount: number | null,
+ *   tobRaw: number | null,
+ *   tobAmount: number | null,   // after applying the legal cap
+ *   capped: boolean,
+ * }}
+ */
+export function calculateTobLineItem(entry, headers, instrumentNames) {
+  const { sourceIndex, row } = entry;
+
+  const tickerIdx = headers.findIndex((h) => h.trim().toLowerCase() === "ticker");
+  const ticker = tickerIdx >= 0 ? (row[tickerIdx] ?? "").trim() : "";
+
+  const info = instrumentNames.get(ticker);
+  const classification = classifyInstrument(info);
+
+  const eurAmount = parseTotalAmountEUR(row, headers);
+  const tobRaw = eurAmount !== null ? eurAmount * classification.rate : null;
+  const tobAmount = tobRaw !== null ? Math.min(tobRaw, classification.cap) : null;
+  const capped = tobRaw !== null && tobAmount !== tobRaw;
+
+  return { sourceIndex, row, ticker, classification, eurAmount, tobRaw, tobAmount, capped };
+}
+
+/**
+ * Run TOB calculation for all in-scope rows and return line items + per-article summary.
+ *
+ * @param {{ sourceIndex: number, row: string[] }[]} scopedEntries
+ * @param {string[]} headers
+ * @param {Map<string, { name: string, securityType: string }>} instrumentNames
+ */
+export function calculateTobResult(scopedEntries, headers, instrumentNames) {
+  const lineItems = scopedEntries.map((e) =>
+    calculateTobLineItem(e, headers, instrumentNames)
+  );
+
+  // Group by article key
+  const byArt = {};
+  for (const item of lineItems) {
+    const key = item.classification.key;
+    if (!byArt[key]) {
+      byArt[key] = {
+        ...TOB_ARTICLES[key],
+        totalEUR: 0,
+        totalTOB: 0,
+        count: 0,
+      };
+    }
+    if (item.eurAmount !== null) byArt[key].totalEUR += item.eurAmount;
+    if (item.tobAmount !== null) byArt[key].totalTOB += item.tobAmount;
+    byArt[key].count++;
+  }
+
+  const totalTOB = lineItems.reduce((s, i) => s + (i.tobAmount ?? 0), 0);
+
+  return { lineItems, byArt, totalTOB };
 }

@@ -21,11 +21,11 @@ async function getAuthHeader() {
 
 /**
  * Resolve a list of ticker symbols to instrument names via the OpenFIGI API.
- * Returns a Map<ticker, { name, securityType }> for successfully resolved tickers.
+ * Returns a Map<ticker, { name, securityType, securityType2, marketSector }>.
  * Unresolvable tickers are omitted from the result.
  *
  * @param {string[]} tickers
- * @returns {Promise<Map<string, { name: string, securityType: string }>>}
+ * @returns {Promise<Map<string, { name: string, securityType: string, securityType2: string, marketSector: string }>>}
  */
 export async function resolveTickerNames(tickers) {
   const result = new Map();
@@ -70,6 +70,8 @@ export async function resolveTickerNames(tickers) {
         result.set(batch[j], {
           name: first.name,
           securityType: first.securityType ?? "",
+          securityType2: first.securityType2 ?? "",
+          marketSector: first.marketSector ?? "",
         });
       }
     }

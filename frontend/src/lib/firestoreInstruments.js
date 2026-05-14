@@ -36,7 +36,12 @@ export async function fetchKnownInstruments(firestore, uid, tickers) {
     snap.forEach((d) => {
       const data = d.data();
       if (data.name) {
-        known.set(d.id, { name: data.name, securityType: data.securityType ?? "" });
+        known.set(d.id, {
+          name: data.name,
+          securityType: data.securityType ?? "",
+          securityType2: data.securityType2 ?? "",
+          marketSector: data.marketSector ?? "",
+        });
       }
     });
   }
@@ -58,9 +63,9 @@ export async function saveInstruments(firestore, uid, instruments) {
   let batch = writeBatch(firestore);
   let ops = 0;
 
-  for (const [ticker, { name, securityType }] of instruments) {
+  for (const [ticker, { name, securityType, securityType2, marketSector }] of instruments) {
     const ref = doc(firestore, "users", uid, INSTRUMENTS_COLLECTION, ticker);
-    batch.set(ref, { ticker, name, securityType, resolvedAt: serverTimestamp() });
+    batch.set(ref, { ticker, name, securityType, securityType2: securityType2 ?? "", marketSector: marketSector ?? "", resolvedAt: serverTimestamp() });
     ops++;
     if (ops >= 500) {
       await batch.commit();

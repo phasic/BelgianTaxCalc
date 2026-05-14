@@ -1,8 +1,12 @@
 import { useCallback, useMemo, useState } from "react";
 import { MONTH_NAMES } from "../utils/formatters.js";
-import { collectTobRowsInScope, defaultTobMonthFromFile } from "../logic/tobCalculation.js";
+import { collectTobRowsInScope, defaultTobMonthFromFile, calculateTobResult } from "../logic/tobCalculation.js";
 import { isTobType } from "../logic/transactionFilters.js";
 import TobScopeTable from "./TobScopeTable.jsx";
+import TobResultTable from "./TobResultTable.jsx";
+
+const EUR = new Intl.NumberFormat("nl-BE", { style: "currency", currency: "EUR", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const PCT = (r) => `${(r * 100).toFixed(2)}%`;
 
 const inputStyle = {
   padding: "8px 12px",
@@ -40,7 +44,7 @@ function ScopeOption({ id, title, detail, active, disabled, onClick }) {
   );
 }
 
-export default function TobWizard({ parsed, typeColIndex, dateColIndex }) {
+export default function TobWizard({ parsed, typeColIndex, dateColIndex, instrumentNames = new Map() }) {
   const hasDates = dateColIndex >= 0;
 
   const defaultMonth = useMemo(
@@ -120,8 +124,9 @@ export default function TobWizard({ parsed, typeColIndex, dateColIndex }) {
     else if (scope === "period") scopeLabel = `${periodStart} → ${periodEnd}`;
     else scopeLabel = `${selectedIndices.size} selected transaction${selectedIndices.size === 1 ? "" : "s"}`;
 
-    setResult({ error: null, scopeLabel, count: scoped.length });
-  }, [parsed, typeColIndex, dateColIndex, scope, hasDates, year, monthIndex, periodStart, periodEnd, selectedIndices]);
+    const tob = calculateTobResult(scoped, parsed.headers, instrumentNames);
+    setResult({ error: null, scopeLabel, ...tob });
+  }, [parsed, typeColIndex, dateColIndex, scope, hasDates, year, monthIndex, periodStart, periodEnd, selectedIndices, instrumentNames]);
 
   return (
     <div
@@ -199,6 +204,7 @@ export default function TobWizard({ parsed, typeColIndex, dateColIndex }) {
             headers={parsed.headers} entries={scopedPreview}
             showCheckbox={false} selectedIndices={selectedIndices} onToggle={toggleRow}
             emptyLabel="No buy/sell transactions in this month."
+            instrumentNames={instrumentNames}
           />
         </div>
       )}
@@ -241,6 +247,7 @@ export default function TobWizard({ parsed, typeColIndex, dateColIndex }) {
             headers={parsed.headers} entries={scopedPreview}
             showCheckbox={false} selectedIndices={selectedIndices} onToggle={toggleRow}
             emptyLabel={!periodStart || !periodEnd ? "Choose dates above to list trades in range." : "No buy/sell transactions in this date range."}
+            instrumentNames={instrumentNames}
           />
         </div>
       )}
@@ -260,6 +267,7 @@ export default function TobWizard({ parsed, typeColIndex, dateColIndex }) {
             headers={parsed.headers} entries={candidateEntries}
             showCheckbox selectedIndices={selectedIndices} onToggle={toggleRow}
             emptyLabel="No buy or sell rows in this file."
+            instrumentNames={instrumentNames}
           />
         </div>
       )}
@@ -288,37 +296,54 @@ export default function TobWizard({ parsed, typeColIndex, dateColIndex }) {
 
       {/* Error */}
       {result?.error && (
-        <div
-          style={{
-            marginTop: 16, padding: 14,
-            background: "#1a0a0a", border: "1px solid #3a1515",
-            borderRadius: 3, color: "#c46a4a", fontSize: 13,
-          }}
-        >
+        <div style={{ marginTop: 16, padding: 14, background: "#1a0a0a", border: "1px solid #3a1515", borderRadius: 3, color: "#c46a4a", fontSize: 13 }}>
           {result.error}
         </div>
       )}
 
-      {/* Result */}
+      {/* TOB Results */}
       {result && !result.error && (
-        <div
-          style={{
-            marginTop: 16, padding: 16,
-            background: "#0d0d0b", border: "1px solid #2a2820",
-            borderRadius: 3, fontSize: 13, color: "#9a9070", lineHeight: 1.6,
-          }}
-        >
-          <div style={{ color: "#c4a84a", marginBottom: 8, fontSize: 12, letterSpacing: 2, textTransform: "uppercase" }}>
-            Scope ready
+        <div style={{ marginTop: 24 }}>
+
+          {/* --- Per-article summary --- */}
+          <div style={{ marginBottom: 20, padding: 18, background: "#0d0d0b", border: "1px solid #2a2820", borderRadius: 4 }}>
+            <div style={{ fontSize: 11, letterSpacing: 2, textTransform: "uppercase", color: "#5a5540", marginBottom: 14 }}>
+              TOB summary — {result.scopeLabel}
+            </div>
+
+            {Object.values(result.byArt).map((grp) => (
+              <div
+                key={grp.key}
+                style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", gap: "6px 24px", marginBottom: 12, paddingBottom: 12, borderBottom: "1px solid #1a1810" }}
+              >
+                <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, color: "#c4a84a", minWidth: 110 }}>{grp.art}</span>
+                <span style={{ fontSize: 12, color: "#6a6450", flex: "1 1 180px" }}>{grp.label}</span>
+                <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: "#9a9070" }}>{PCT(grp.rate)}</span>
+                <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: "#8a8870" }}>on {EUR.format(grp.totalEUR)}</span>
+                <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 14, color: "#e8d890", minWidth: 90, textAlign: "right" }}>
+                  {EUR.format(grp.totalTOB)}
+                </span>
+              </div>
+            ))}
+
+            {/* Total */}
+            <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "baseline", gap: 16, paddingTop: 4 }}>
+              <span style={{ fontSize: 12, letterSpacing: 1.5, textTransform: "uppercase", color: "#8a8060" }}>Total TOB due</span>
+              <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 20, color: "#f0e060", letterSpacing: 1 }}>
+                {EUR.format(result.totalTOB)}
+              </span>
+            </div>
           </div>
-          <div>
-            <strong style={{ color: "#e8e4db" }}>{result.scopeLabel}</strong> —{" "}
-            <strong style={{ color: "#e8e4db" }}>{result.count}</strong> buy/sell transaction
-            {result.count === 1 ? "" : "s"} will be used for TOB.
+
+          {/* --- Transaction detail table --- */}
+          <div style={{ fontSize: 11, letterSpacing: 2, textTransform: "uppercase", color: "#5a5540", marginBottom: 8 }}>
+            Transaction detail
           </div>
-          <div style={{ marginTop: 10, fontSize: 12, color: "#5a5540" }}>
-            Rates and amounts come next; this step only fixes which rows are in scope.
-          </div>
+          <TobResultTable
+            headers={parsed.headers}
+            lineItems={result.lineItems}
+            instrumentNames={instrumentNames}
+          />
         </div>
       )}
     </div>
