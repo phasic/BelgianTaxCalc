@@ -1,9 +1,26 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Per-user transaction history (CSV rows stored as one doc per deduped fingerprint)
+
+    // --- Allowlist (you maintain documents in the Firebase console) ---
+    // One document per allowed Google account: collection `allowlist`, document ID = full email
+    // (e.g. allowlist / you@gmail.com). Body can be empty or { "note": "..." }.
+    //
+    // Users may only read their own allowlist doc (to verify access in the app).
+    // No client writes — add/remove people only from the console or Admin SDK.
+    match /allowlist/{email} {
+      allow get: if request.auth != null && request.auth.token.email == email;
+      allow list: if false;
+      allow create, update, delete: if false;
+    }
+
+    // --- Transaction history ---
+    // Same user as path, and sign-in email must have a matching allowlist document.
     match /users/{userId}/transactions/{txId} {
-      allow read, create, update, delete: if request.auth != null && request.auth.uid == userId;
+      allow read, create, update, delete: if request.auth != null
+        && request.auth.uid == userId
+        && request.auth.token.email != null
+        && exists(/databases/$(database)/documents/allowlist/$(request.auth.token.email));
     }
   }
 }

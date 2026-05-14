@@ -12,7 +12,8 @@ import {
   signInWithPopup,
   signOut,
 } from "firebase/auth";
-import { auth, firebaseConfigured } from "../lib/firebase.js";
+import { doc, getDoc } from "firebase/firestore";
+import { auth, db, firebaseConfigured } from "../lib/firebase.js";
 
 const AuthContext = createContext(null);
 
@@ -25,9 +26,42 @@ export function AuthProvider({ children }) {
       setUser(null);
       return undefined;
     }
-    return onAuthStateChanged(auth, (u) => {
-      setUser(u ?? null);
-      setAuthError(null);
+    return onAuthStateChanged(auth, async (u) => {
+      if (!u) {
+        setUser(null);
+        setAuthError(null);
+        return;
+      }
+      setUser(undefined);
+      if (!db) {
+        setUser(u);
+        setAuthError(null);
+        return;
+      }
+      const email = u.email;
+      if (!email) {
+        setAuthError(new Error("This sign-in has no email; it cannot be allowlisted."));
+        await signOut(auth);
+        setUser(null);
+        return;
+      }
+      try {
+        const snap = await getDoc(doc(db, "allowlist", email));
+        if (!snap.exists()) {
+          setAuthError(
+            new Error("This Google account is not on the allowlist. Ask the project owner to add your email in Firestore.")
+          );
+          await signOut(auth);
+          setUser(null);
+          return;
+        }
+        setUser(u);
+        setAuthError(null);
+      } catch (e) {
+        setAuthError(e instanceof Error ? e : new Error(String(e)));
+        await signOut(auth);
+        setUser(null);
+      }
     });
   }, []);
 
