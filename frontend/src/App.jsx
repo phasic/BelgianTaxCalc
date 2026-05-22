@@ -530,9 +530,6 @@ export default function App() {
           >
             Belgian Tax Calc
           </div>
-          <h1 style={{ fontSize: 20, fontWeight: 400, margin: 0, color: "#f0ead8" }}>
-            Investment Tax Agent
-          </h1>
         </div>
         <AuthBar />
       </header>
