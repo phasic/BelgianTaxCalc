@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { collectTobRowsInScope, calculateTobResult } from "../logic/tobCalculation.js";
 import { makeTransactionKey } from "../logic/tobDeadline.js";
-import { findTypeColumnIndex, findDateColumnIndex } from "../logic/transactionFilters.js";
+import { findTypeColumnIndex, findDateColumnIndex, isTobType } from "../logic/transactionFilters.js";
 import { MONTH_NAMES } from "../utils/formatters.js";
 import FileDropZone from "./FileDropZone.jsx";
 import TobResultTable from "./TobResultTable.jsx";
@@ -74,7 +74,7 @@ export default function QuickTob({
     autoLoadAttempted.current = false;
   }, [user]);
 
-  const selectedMonth = months[selectedIdx];
+  const selectedMonth = selectedIdx !== null ? months[selectedIdx] : null;
 
   // ── Per-month stats: {total, unpaid} for each of the 3 month buttons ──
   const monthStats = useMemo(() => {
@@ -91,9 +91,9 @@ export default function QuickTob({
     });
   }, [hasData, effectiveData, typeColIndex, dateColIndex, months, tobPaidKeys]);
 
-  // ── TOB calculation — only unpaid transactions ──
+  // ── TOB calculation — only unpaid transactions for selected month ──
   const { tobResult, allMonthKeys } = useMemo(() => {
-    if (!hasData) return { tobResult: null, allMonthKeys: [] };
+    if (!hasData || selectedIdx === null) return { tobResult: null, allMonthKeys: [] };
 
     const scoped = collectTobRowsInScope(effectiveData, typeColIndex, dateColIndex, "month", {
       year: selectedMonth.year, monthIndex: selectedMonth.monthIndex,
@@ -113,7 +113,30 @@ export default function QuickTob({
       : null;
 
     return { tobResult: tob, allMonthKeys: allKeys };
-  }, [hasData, effectiveData, typeColIndex, dateColIndex, selectedMonth, instrumentNames, tobPaidKeys]);
+  }, [hasData, effectiveData, typeColIndex, dateColIndex, selectedIdx, selectedMonth, instrumentNames, tobPaidKeys]);
+
+  // ── TOB calculation — all unpaid transactions regardless of date ──
+  const { allUnpaidResult, allUnpaidKeys } = useMemo(() => {
+    if (!hasData) return { allUnpaidResult: null, allUnpaidKeys: [] };
+
+    const unpaidRows = [];
+    const unpaidKeys = [];
+
+    for (let i = 0; i < effectiveData.rows.length; i++) {
+      const row = effectiveData.rows[i];
+      if (!isTobType(row[typeColIndex])) continue;
+      const key = makeTransactionKey(row, effectiveData.headers);
+      if (tobPaidKeys?.has(key)) continue;
+      unpaidRows.push({ sourceIndex: i, row });
+      unpaidKeys.push(key);
+    }
+
+    const result = unpaidRows.length
+      ? calculateTobResult(unpaidRows, effectiveData.headers, instrumentNames)
+      : null;
+
+    return { allUnpaidResult: result, allUnpaidKeys: unpaidKeys };
+  }, [hasData, effectiveData, typeColIndex, tobPaidKeys, instrumentNames]);
 
   const paidCount = allMonthKeys.filter((k) => tobPaidKeys?.has(k)).length;
   const allPaid = allMonthKeys.length > 0 && paidCount === allMonthKeys.length;
@@ -236,17 +259,154 @@ export default function QuickTob({
             );
           })}
         </div>
+
+        {/* ── All unpaid button ── */}
+        <button
+          type="button"
+          onClick={() => setSelectedIdx(null)}
+          style={{
+            width: "100%",
+            marginTop: 10,
+            padding: "13px 20px",
+            border: selectedIdx === null ? "2px solid #c4a84a" : "1px solid #3d3a28",
+            borderRadius: 6,
+            background: selectedIdx === null ? "#1e1a08" : "#111109",
+            cursor: "pointer",
+            fontFamily: "Georgia, serif",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            outline: "none",
+            transition: "border-color 0.15s, background 0.15s",
+          }}
+        >
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 3 }}>
+            <span style={{ fontSize: 14, color: selectedIdx === null ? "#c4a84a" : "#c0b890" }}>
+              All unpaid transactions
+            </span>
+            <span style={{ fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", color: selectedIdx === null ? "#9a8040" : "#6a6450" }}>
+              across all time
+            </span>
+          </div>
+          <span style={{ fontSize: 12, color: allUnpaidKeys.length === 0 ? "#72c472" : (selectedIdx === null ? "#e8a040" : "#9a8050") }}>
+            {allUnpaidKeys.length === 0 ? "✓ all paid" : `${allUnpaidKeys.length} unpaid`}
+          </span>
+        </button>
       </div>
 
       {/* ── STEP 3: Results ── */}
       <div style={{ marginBottom: 24 }}>
-        <StepLabel n="3">TOB for {monthLabel(selectedMonth)}</StepLabel>
+        <StepLabel n="3">
+          {selectedIdx === null ? "TOB — all unpaid transactions" : `TOB for ${monthLabel(selectedMonth)}`}
+        </StepLabel>
 
         {!hasData ? (
           <div style={{ padding: "16px 20px", background: "#111109", border: "1px solid #3d3a28", borderRadius: 4, color: "#8a8268", fontSize: 13 }}>
             {user ? "Waiting for history to load…" : "Load a CSV above to calculate your TOB."}
           </div>
+        ) : selectedIdx === null ? (
+          /* ── All-unpaid mode ── */
+          !allUnpaidResult ? (
+            <div style={{ padding: "16px 20px", background: "#0c1f0c", border: "1px solid #2a5228", borderRadius: 4, color: "#72c472", fontSize: 13, display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ fontSize: 18 }}>✓</span>
+              No unpaid buy/sell transactions.
+            </div>
+          ) : (
+            <div style={{ background: "#111109", border: "1px solid #3d3a28", borderRadius: 4, overflow: "hidden" }}>
+
+              {allUnpaidResult.unresolvedTickers?.length > 0 && (
+                <div style={{ padding: "12px 18px", background: "#1a0a0a", borderBottom: "1px solid #6a2020", display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div style={{ fontSize: 12, color: "#c04848", letterSpacing: 0.5 }}>
+                    {allUnpaidResult.unresolvedTickers.length} ticker{allUnpaidResult.unresolvedTickers.length > 1 ? "s" : ""} could not be classified — excluded from total
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                    {allUnpaidResult.unresolvedTickers.map((t) => (
+                      <span key={t} style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, padding: "2px 8px", background: "#2a1010", border: "1px solid #6a2020", borderRadius: 3, color: "#e07070" }}>
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                  <div style={{ fontSize: 11, color: "#7a5050", fontStyle: "italic" }}>
+                    Go to the Transactions tab and use cloud sync to resolve instrument types via OpenFIGI, then recalculate.
+                  </div>
+                </div>
+              )}
+
+              <div style={{ padding: "18px 22px 14px" }}>
+                {Object.values(allUnpaidResult.byArt).map((grp, i, arr) => (
+                  <div
+                    key={grp.key}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "130px 1fr auto",
+                      alignItems: "center",
+                      gap: "0 16px",
+                      padding: "9px 0",
+                      borderBottom: i < arr.length - 1 ? "1px solid #1e1e10" : "none",
+                    }}
+                  >
+                    <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: "#c4a84a" }}>{grp.art}</span>
+                    <span style={{ fontSize: 12, color: "#8a8268" }}>{grp.label}</span>
+                    <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, color: "#e8d890", textAlign: "right" }}>
+                      {EUR.format(grp.totalTOB)}
+                    </span>
+                  </div>
+                ))}
+
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 14, paddingTop: 14, borderTop: "2px solid #3d3a28" }}>
+                  <span style={{ fontSize: 12, letterSpacing: 1.5, textTransform: "uppercase", color: "#a89870" }}>
+                    Total TOB due
+                  </span>
+                  <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 26, color: "#f0e060", letterSpacing: 1 }}>
+                    {EUR.format(allUnpaidResult.totalTOB)}
+                  </span>
+                </div>
+              </div>
+
+              <div style={{ padding: "14px 20px", borderTop: "1px solid #2e2c1e", background: "#0e0e0a", display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+                <a
+                  href="https://eservices.minfin.fgov.be/myminfin-web/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "10px 18px", border: "1px solid #524e34", borderRadius: 3, background: "#181810", color: "#c4a84a", fontSize: 11, letterSpacing: 1, textDecoration: "none", fontFamily: "Georgia, serif", textTransform: "uppercase" }}
+                >
+                  ↗ Pay on MyMinfin
+                </a>
+
+                <button
+                  type="button"
+                  onClick={() => markPaidBatch(allUnpaidKeys, true)}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 18px", border: "1px solid #3d6a40", borderRadius: 3, background: "#111a10", color: "#90c878", cursor: "pointer", fontSize: 11, letterSpacing: 1, fontFamily: "Georgia, serif", textTransform: "uppercase" }}
+                >
+                  ✓ Mark all {allUnpaidKeys.length} as paid
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setDetailOpen((v) => !v)}
+                  style={{ marginLeft: "auto", padding: "8px 14px", border: "1px solid #2e2c1e", borderRadius: 3, background: "transparent", color: "#7a7460", cursor: "pointer", fontSize: 11, letterSpacing: 1, fontFamily: "Georgia, serif", textTransform: "uppercase" }}
+                >
+                  {detailOpen ? "▴ Hide details" : "▾ Show details"} ({allUnpaidResult.lineItems.length} lines)
+                </button>
+              </div>
+
+              {detailOpen && (
+                <div style={{ borderTop: "1px solid #2e2c1e" }}>
+                  <TobResultTable
+                    headers={effectiveData.headers}
+                    lineItems={allUnpaidResult.lineItems}
+                    instrumentNames={instrumentNames}
+                    dateColIndex={dateColIndex}
+                    tobPaidKeys={tobPaidKeys}
+                    toggleTobPaid={toggleTobPaid}
+                    updateManualType={updateManualType}
+                  />
+                </div>
+              )}
+            </div>
+          )
         ) : allPaid && allMonthKeys.length > 0 ? (
+          /* ── Month mode: all paid ── */
           <div style={{ padding: "16px 20px", background: "#0c1f0c", border: "1px solid #2a5228", borderRadius: 4, color: "#72c472", fontSize: 13, display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ fontSize: 18 }}>✓</span>
             All {allMonthKeys.length} transactions for {monthLabel(selectedMonth)} are marked as paid.
@@ -259,10 +419,12 @@ export default function QuickTob({
             </button>
           </div>
         ) : !tobResult ? (
+          /* ── Month mode: no unpaid ── */
           <div style={{ padding: "16px 20px", background: "#111109", border: "1px solid #3d3a28", borderRadius: 4, color: "#8a8268", fontSize: 13 }}>
             No unpaid buy/sell transactions in {monthLabel(selectedMonth)}.
           </div>
         ) : (
+          /* ── Month mode: results ── */
           <div style={{ background: "#111109", border: "1px solid #3d3a28", borderRadius: 4, overflow: "hidden" }}>
 
             {/* Unresolved instruments error */}
