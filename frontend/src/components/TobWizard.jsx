@@ -412,33 +412,47 @@ export default function TobWizard({ parsed, typeColIndex, dateColIndex, instrume
             </div>
           )}
 
-          {/* --- Per-article summary --- */}
+          {/* --- Government form fill-in --- */}
           <div style={{ marginBottom: 20, padding: 18, background: "#111109", border: "1px solid #3d3a28", borderRadius: 4 }}>
             <div style={{ fontSize: 11, letterSpacing: 2, textTransform: "uppercase", color: "#7a7460", marginBottom: 14 }}>
-              TOB summary — {result.scopeLabel}
+              Fill in at divtax.minfin.fgov.be — {result.scopeLabel}
             </div>
 
             {Object.values(result.byArt).map((grp) => (
               <div
                 key={grp.key}
-                style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", gap: "6px 24px", marginBottom: 12, paddingBottom: 12, borderBottom: "1px solid #282618" }}
+                style={{ marginBottom: 10, padding: "12px 14px", border: "1px solid #2a2818", borderRadius: 4, background: "#0e0e0a" }}
               >
-                <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, color: "#c4a84a", minWidth: 110 }}>{grp.art}</span>
-                <span style={{ fontSize: 12, color: "#8a8268", flex: "1 1 180px" }}>{grp.label}</span>
-                <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: "#c0b890" }}>{PCT(grp.rate)}</span>
-                <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: "#a0a088" }}>on {EUR.format(grp.totalEUR)}</span>
-                <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 14, color: "#e8d890", minWidth: 90, textAlign: "right" }}>
-                  {EUR.format(grp.totalTOB)}
-                </span>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
+                  <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: "#c4a84a" }}>{grp.art}</span>
+                  <span style={{ fontSize: 11, color: "#6a6450" }}>{grp.label}</span>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr auto", rowGap: 5, columnGap: 32, fontSize: 12 }}>
+                  <span style={{ color: "#8a8268" }}>Number of transactions</span>
+                  <span style={{ fontFamily: "ui-monospace, monospace", color: "#e8e4db", textAlign: "right" }}>{grp.count}</span>
+                  <span style={{ color: "#8a8268" }}>Taxable amount</span>
+                  <span style={{ fontFamily: "ui-monospace, monospace", color: "#e8e4db", textAlign: "right" }}>{EUR.format(grp.totalEUR)}</span>
+                </div>
               </div>
             ))}
 
-            {/* Total */}
-            <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "baseline", gap: 16, paddingTop: 4 }}>
-              <span style={{ fontSize: 12, letterSpacing: 1.5, textTransform: "uppercase", color: "#a89870" }}>Total TOB due</span>
-              <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 20, color: "#f0e060", letterSpacing: 1 }}>
-                {EUR.format(result.totalTOB)}
-              </span>
+            {/* Calculated TOB — double-check */}
+            <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #282618" }}>
+              <div style={{ fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", color: "#6a6450", marginBottom: 8 }}>
+                Calculated TOB (double-check)
+              </div>
+              {Object.values(result.byArt).map((grp) => (
+                <div key={grp.key} style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#7a7460", marginBottom: 4 }}>
+                  <span>{grp.art} <span style={{ fontFamily: "ui-monospace, monospace" }}>({PCT(grp.rate)})</span></span>
+                  <span style={{ fontFamily: "ui-monospace, monospace", color: "#c8c080" }}>{EUR.format(grp.totalTOB)}</span>
+                </div>
+              ))}
+              <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "baseline", gap: 16, marginTop: 10, paddingTop: 10, borderTop: "1px solid #3d3a28" }}>
+                <span style={{ fontSize: 12, letterSpacing: 1.5, textTransform: "uppercase", color: "#a89870" }}>Total TOB due</span>
+                <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 20, color: "#f0e060", letterSpacing: 1 }}>
+                  {EUR.format(result.totalTOB)}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -471,7 +485,7 @@ export default function TobWizard({ parsed, typeColIndex, dateColIndex, instrume
 
             <p style={{ margin: "0 0 14px", fontSize: 13, color: "#c0b890", lineHeight: 1.7 }}>
               Belgian residents must declare and pay TOB themselves each month via{" "}
-              <strong style={{ color: "#e8e4db" }}>MyMinfin</strong> (the SPF Finances online portal).
+              <strong style={{ color: "#e8e4db" }}>divtax.minfin.fgov.be</strong>.
               The deadline is the{" "}
               <strong style={{ color: "#e8e4db" }}>last workday of the second month following the transactions</strong>{" "}
               (e.g. transactions in May → deadline is the last workday of July).
@@ -479,27 +493,24 @@ export default function TobWizard({ parsed, typeColIndex, dateColIndex, instrume
 
             <ol style={{ margin: "0 0 20px", paddingLeft: 22, fontSize: 13, color: "#c0b890", lineHeight: 2.1 }}>
               <li>
-                Log in to{" "}
+                Go to{" "}
                 <a
-                  href="https://eservices.minfin.fgov.be/myminfin-web/"
+                  href="https://divtax.minfin.fgov.be/"
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{ color: "#c4a84a", textDecoration: "none", borderBottom: "1px solid #c4a84a55" }}
                 >
-                  MyMinfin
+                  divtax.minfin.fgov.be
                 </a>{" "}
-                with eID, itsme, or another accepted method.
+                and log in with eID, itsme, or another accepted method.
               </li>
               <li>
-                Navigate to{" "}
-                <em style={{ color: "#d8d0b8" }}>Mes déclarations / Mijn aangiften</em>{" "}
-                → <em style={{ color: "#d8d0b8" }}>Taxe sur les opérations de bourse / Taks op beursverrichtingen</em>.
+                Select the month and choose the transaction type (art. 120, 1° or 3°).
               </li>
               <li>
-                Fill in the taxable base per article from the summary above:<br />
-                <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: "#a89870" }}>
-                  art. 120, 1° — distributing funds &nbsp;|&nbsp; art. 120, 2° — stocks &nbsp;|&nbsp; art. 120, 3° — accumulating funds
-                </span>
+                For each article in the fill-in section above, enter the{" "}
+                <em style={{ color: "#d8d0b8" }}>number of transactions</em> and the{" "}
+                <em style={{ color: "#d8d0b8" }}>taxable amount</em>.
               </li>
               <li>
                 Submit the declaration and pay the total TOB of{" "}
@@ -521,7 +532,7 @@ export default function TobWizard({ parsed, typeColIndex, dateColIndex, instrume
               }}
             >
               {[
-                { label: "MyMinfin — file online", url: "https://eservices.minfin.fgov.be/myminfin-web/" },
+                { label: "File TOB online", url: "https://divtax.minfin.fgov.be/" },
                 { label: "SPF Finances — TOB info", url: "https://finances.belgium.be/fr/particuliers/bourse/taxe-boursiere" },
                 { label: "Official rates & rules", url: "https://finances.belgium.be/fr/particuliers/bourse/taxe-boursiere/taux" },
               ].map(({ label, url }) => (

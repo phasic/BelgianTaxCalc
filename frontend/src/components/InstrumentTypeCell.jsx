@@ -4,21 +4,21 @@ import { classifyInstrument } from "../logic/tobClassification.js";
 const OPTIONS = [
   {
     value: "stock",
-    label: "Stock",
-    sub: "art. 120, 2° · 0.35% · cap €1 600",
+    label: "Stock / distributing ETF",
+    sub: "art. 120, 1° — 0,35% · cap €1 600",
     color: "#7a8898",
   },
   {
     value: "fund_dist",
-    label: "Distributing Fund",
-    sub: "art. 120, 1° · 1.32% · cap €4 000",
+    label: "Bond / distributing fund",
+    sub: "art. 120, 1° — 0,12% · cap €1 300",
     color: "#7a9870",
   },
   {
     value: "fund_acc",
-    label: "Accumulating Fund (UCITS)",
-    sub: "art. 120, 3° · 1.32% · cap €4 000",
-    color: "#7a9870",
+    label: "Accumulating fund / ETF",
+    sub: "art. 120, 1° — 1,32% · cap €4 000",
+    color: "#9a7870",
   },
 ];
 
@@ -55,12 +55,15 @@ export default function InstrumentTypeCell({ ticker, instrumentInfo, updateManua
 
   const typeLabel =
     !isUnresolved
-      ? classification.key === "120,2" ? "Share" : "Fund"
+      ? classification.key === "120,1_mid" ? "Share/ETF"
+        : classification.key === "120,1_low" ? "Bond/Fund"
+        : "Acc Fund"
       : null;
 
   const typeColor =
-    typeLabel === "Share" ? "#7a8898"
-    : typeLabel === "Fund" ? "#7a9870"
+    classification?.key === "120,1_mid" ? "#7a8898"
+    : classification?.key === "120,1_low" ? "#7a9870"
+    : classification?.key === "120,1_high" || classification?.key === "120,3" ? "#9a7870"
     : "#4a4535";
 
   useEffect(() => {

@@ -427,7 +427,7 @@ export default function QuickTob({
           /* ── Month mode: results ── */
           <div style={{ background: "#111109", border: "1px solid #3d3a28", borderRadius: 4, overflow: "hidden" }}>
 
-            {/* Unresolved instruments error */}
+            {/* Unresolved instruments warning */}
             {tobResult.unresolvedTickers?.length > 0 && (
               <div style={{ padding: "12px 18px", background: "#1a0a0a", borderBottom: "1px solid #6a2020", display: "flex", flexDirection: "column", gap: 6 }}>
                 <div style={{ fontSize: 12, color: "#c04848", letterSpacing: 0.5 }}>
@@ -446,37 +446,48 @@ export default function QuickTob({
               </div>
             )}
 
-            {/* Per-article breakdown */}
-            <div style={{ padding: "18px 22px 14px" }}>
+            {/* Government form fill-in */}
+            <div style={{ padding: "16px 20px 14px" }}>
+              <div style={{ fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: "#7a7460", marginBottom: 14 }}>
+                Fill in at divtax.minfin.fgov.be — {monthLabel(selectedMonth)}
+              </div>
               {paidCount > 0 && (
                 <div style={{ marginBottom: 12, fontSize: 11, color: "#72c472" }}>
-                  {paidCount} of {allMonthKeys.length} transactions already marked paid — excluded from calculation.
+                  {paidCount} of {allMonthKeys.length} transactions already marked paid — excluded.
                 </div>
               )}
-              {Object.values(tobResult.byArt).map((grp, i, arr) => (
+              {Object.values(tobResult.byArt).map((grp) => (
                 <div
                   key={grp.key}
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "130px 1fr auto",
-                    alignItems: "center",
-                    gap: "0 16px",
-                    padding: "9px 0",
-                    borderBottom: i < arr.length - 1 ? "1px solid #1e1e10" : "none",
-                  }}
+                  style={{ marginBottom: 10, padding: "12px 14px", border: "1px solid #2a2818", borderRadius: 4, background: "#0e0e0a" }}
                 >
-                  <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: "#c4a84a" }}>{grp.art}</span>
-                  <span style={{ fontSize: 12, color: "#8a8268" }}>{grp.label}</span>
-                  <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, color: "#e8d890", textAlign: "right" }}>
-                    {EUR.format(grp.totalTOB)}
-                  </span>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
+                    <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: "#c4a84a" }}>{grp.art}</span>
+                    <span style={{ fontSize: 11, color: "#6a6450" }}>{grp.label}</span>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr auto", rowGap: 5, columnGap: 24, fontSize: 12 }}>
+                    <span style={{ color: "#8a8268" }}>Number of transactions</span>
+                    <span style={{ fontFamily: "ui-monospace, monospace", color: "#e8e4db", textAlign: "right" }}>{grp.count}</span>
+                    <span style={{ color: "#8a8268" }}>Taxable amount</span>
+                    <span style={{ fontFamily: "ui-monospace, monospace", color: "#e8e4db", textAlign: "right" }}>{EUR.format(grp.totalEUR)}</span>
+                  </div>
                 </div>
               ))}
+            </div>
 
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 14, paddingTop: 14, borderTop: "2px solid #3d3a28" }}>
-                <span style={{ fontSize: 12, letterSpacing: 1.5, textTransform: "uppercase", color: "#a89870" }}>
-                  Total TOB due
-                </span>
+            {/* Calculated TOB — double-check */}
+            <div style={{ padding: "12px 20px 16px", borderTop: "1px solid #1e1e10", background: "#0c0c08" }}>
+              <div style={{ fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", color: "#6a6450", marginBottom: 10 }}>
+                Calculated TOB (double-check)
+              </div>
+              {Object.values(tobResult.byArt).map((grp) => (
+                <div key={grp.key} style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#7a7460", marginBottom: 5 }}>
+                  <span>{grp.art} <span style={{ fontFamily: "ui-monospace, monospace" }}>({(grp.rate * 100).toFixed(2)}%)</span></span>
+                  <span style={{ fontFamily: "ui-monospace, monospace", color: "#c8c080" }}>{EUR.format(grp.totalTOB)}</span>
+                </div>
+              ))}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 10, paddingTop: 10, borderTop: "1px solid #3d3a28" }}>
+                <span style={{ fontSize: 12, letterSpacing: 1.5, textTransform: "uppercase", color: "#a89870" }}>Total TOB due</span>
                 <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 26, color: "#f0e060", letterSpacing: 1 }}>
                   {EUR.format(tobResult.totalTOB)}
                 </span>
@@ -486,12 +497,12 @@ export default function QuickTob({
             {/* Action bar */}
             <div style={{ padding: "14px 20px", borderTop: "1px solid #2e2c1e", background: "#0e0e0a", display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
               <a
-                href="https://eservices.minfin.fgov.be/myminfin-web/"
+                href="https://divtax.minfin.fgov.be/"
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "10px 18px", border: "1px solid #524e34", borderRadius: 3, background: "#181810", color: "#c4a84a", fontSize: 11, letterSpacing: 1, textDecoration: "none", fontFamily: "Georgia, serif", textTransform: "uppercase" }}
               >
-                ↗ Pay on MyMinfin
+                ↗ File on divtax.minfin.fgov.be
               </a>
 
               <button
