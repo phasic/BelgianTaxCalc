@@ -23,8 +23,16 @@ const EUR = new Intl.NumberFormat("nl-BE", {
 
 const PCT = (r) => `${(r * 100).toFixed(2)}%`;
 
+// Only these CSV columns are relevant for the tax declaration.
+// Everything else (quantity, price per share, FX rate, …) is hidden.
+const RELEVANT_COL_NAMES = new Set(["date", "ticker", "type", "total amount"]);
+
 export default function TobResultTable({ headers, lineItems, instrumentNames = new Map(), dateColIndex = -1, tobPaidKeys, toggleTobPaid, updateManualType }) {
-  const currencyColIndex = headers.findIndex((h) => h.trim().toLowerCase() === "currency");
+  // Pre-compute which column indices to render
+  const visibleCols = headers.reduce((acc, h, i) => {
+    if (RELEVANT_COL_NAMES.has(h.trim().toLowerCase())) acc.push(i);
+    return acc;
+  }, []);
 
   return (
     <div
@@ -38,11 +46,11 @@ export default function TobResultTable({ headers, lineItems, instrumentNames = n
         background: "#0d0d0b",
       }}
     >
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 640 }}>
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 520 }}>
         <thead>
           <tr style={{ position: "sticky", top: 0, background: "#14140f", zIndex: 1 }}>
-            {headers.flatMap((h, hi) => {
-              if (hi === currencyColIndex) return [];
+            {visibleCols.flatMap((hi) => {
+              const h = headers[hi];
               const thEl = <th key={`${hi}-${h}`} style={thStyle}>{h}</th>;
               if (hi === dateColIndex) {
                 return [thEl, <th key="deadline-th" style={{ ...thStyle, color: "#8a7a50" }}>TOB Deadline</th>];
@@ -61,10 +69,10 @@ export default function TobResultTable({ headers, lineItems, instrumentNames = n
             const instrumentInfo = ticker ? instrumentNames.get(ticker) : null;
             return (
               <tr key={sourceIndex} style={{ borderTop: "1px solid #282618" }}>
-                {row.flatMap((cell, ci) => {
-                  if (ci === currencyColIndex) return [];
+                {visibleCols.flatMap((ci) => {
+                  const cell = row[ci];
                   const header = headers[ci] ?? "";
-                  const isTicker = header.toLowerCase() === "ticker";
+                  const isTicker = header.trim().toLowerCase() === "ticker";
                   const tdEl = (
                     <td
                       key={ci}
@@ -117,7 +125,14 @@ export default function TobResultTable({ headers, lineItems, instrumentNames = n
                       </div>
                     </span>
                   ) : (
-                    <span style={{ color: "#c4a84a" }}>{classification.art}</span>
+                    <span style={{ color: "#c4a84a" }}>
+                      {classification.art}
+                      {classification.basis && (
+                        <div style={{ fontSize: 10, color: "#7a6a40", marginTop: 2, fontFamily: "Georgia, serif", fontStyle: "italic", maxWidth: 180, whiteSpace: "normal" }}>
+                          {classification.basis}
+                        </div>
+                      )}
+                    </span>
                   )}
                 </td>
 
