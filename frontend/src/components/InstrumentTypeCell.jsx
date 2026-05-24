@@ -4,21 +4,27 @@ import { classifyInstrument } from "../logic/tobClassification.js";
 const OPTIONS = [
   {
     value: "stock",
-    label: "Stock / distributing ETF",
+    label: "Stock / ETC",
     sub: "art. 120, 1° — 0,35% · cap €1 600",
     color: "#7a8898",
   },
   {
     value: "fund_dist",
-    label: "Bond / distributing fund",
+    label: "Bond / ETN / distributing ETF",
     sub: "art. 120, 1° — 0,12% · cap €1 300",
     color: "#7a9870",
   },
   {
     value: "fund_acc",
-    label: "Accumulating fund / ETF",
-    sub: "art. 120, 1° — 1,32% · cap €4 000",
-    color: "#9a7870",
+    label: "Accumulating ETF/fund — NOT Belgian-registered",
+    sub: "art. 120, 1° — 0,12% · cap €1 300",
+    color: "#7a9870",
+  },
+  {
+    value: "fund_acc_be",
+    label: "Accumulating ETF/fund — Belgian-registered (FSMA)",
+    sub: "art. 120, 1° — 1,32% · cap €4 000 · also applies if any compartment of the fund is on the FSMA list",
+    color: "#c4943a",
   },
 ];
 
@@ -37,7 +43,7 @@ const OPTIONS = [
  * Props:
  *   ticker           – ticker symbol (string)
  *   instrumentInfo   – from instrumentNames Map (may be null)
- *   updateManualType – (ticker, "stock"|"fund_dist"|"fund_acc"|null) => void
+ *   updateManualType – (ticker, "stock"|"fund_dist"|"fund_acc"|"fund_acc_be"|null) => void
  *                      only required when manual interaction is desired
  */
 export default function InstrumentTypeCell({ ticker, instrumentInfo, updateManualType }) {
@@ -55,15 +61,17 @@ export default function InstrumentTypeCell({ ticker, instrumentInfo, updateManua
 
   const typeLabel =
     !isUnresolved
-      ? classification.key === "120,1_mid" ? "Share/ETF"
-        : classification.key === "120,1_low" ? "Bond/Fund"
-        : "Acc Fund"
+      ? classification.key === "120,1_mid"  ? "Share/ETC"
+        : classification.key === "120,1_high" ? "Acc (BE)"
+        : classification.key === "120,3"      ? "Acc RE"
+        : "Bond/ETF"   // 120,1_low: bonds, ETNs, dist ETFs, acc non-BE
       : null;
 
   const typeColor =
-    classification?.key === "120,1_mid" ? "#7a8898"
-    : classification?.key === "120,1_low" ? "#7a9870"
-    : classification?.key === "120,1_high" || classification?.key === "120,3" ? "#9a7870"
+    classification?.key === "120,1_mid"  ? "#7a8898"
+    : classification?.key === "120,1_low"  ? "#7a9870"
+    : classification?.key === "120,1_high" ? "#c4943a"
+    : classification?.key === "120,3"      ? "#c4943a"
     : "#4a4535";
 
   useEffect(() => {
