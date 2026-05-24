@@ -8,6 +8,7 @@ import QuickTob from "./components/QuickTob.jsx";
 import AuthBar from "./components/AuthBar.jsx";
 import CloudSyncPanel from "./components/CloudSyncPanel.jsx";
 import InstrumentList from "./components/InstrumentList.jsx";
+import TobGuide from "./components/TobGuide.jsx";
 import { useAuth } from "./context/AuthContext.jsx";
 import { db } from "./lib/firebase.js";
 import { fetchKnownInstruments, saveInstruments, resolveAndSaveNewTickers, saveManualInstrumentType } from "./lib/firestoreInstruments.js";
@@ -21,6 +22,7 @@ const TAB = {
   TRANSACTIONS: "transactions",
   TOB: "tob",
   INSTRUMENTS: "instruments",
+  GUIDE: "guide",
 };
 
 function NavBar({ activeTab, setActiveTab, hasData, tobEligible, rowCount }) {
@@ -30,6 +32,7 @@ function NavBar({ activeTab, setActiveTab, hasData, tobEligible, rowCount }) {
     { id: TAB.TRANSACTIONS, label: `Transactions${rowCount > 0 ? ` (${rowCount})` : ""}`, disabled: !hasData },
     { id: TAB.TOB, label: "Calculate TOB", disabled: !tobEligible },
     { id: TAB.INSTRUMENTS, label: "Instruments" },
+    { id: TAB.GUIDE, label: "Guide" },
   ];
 
   const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 640);
@@ -707,6 +710,9 @@ export default function App() {
             instrumentNames={instrumentNames}
           />
         )}
+
+        {/* ═══ GUIDE tab ═══ */}
+        {activeTab === TAB.GUIDE && <TobGuide />}
       </main>
     </div>
   );
