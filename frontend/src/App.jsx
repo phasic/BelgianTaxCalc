@@ -9,6 +9,7 @@ import AuthBar from "./components/AuthBar.jsx";
 import CloudSyncPanel from "./components/CloudSyncPanel.jsx";
 import InstrumentList from "./components/InstrumentList.jsx";
 import TobGuide from "./components/TobGuide.jsx";
+import Overview from "./components/Overview.jsx";
 import { useAuth } from "./context/AuthContext.jsx";
 import { db } from "./lib/firebase.js";
 import { fetchKnownInstruments, saveInstruments, resolveAndSaveNewTickers, saveManualInstrumentType } from "./lib/firestoreInstruments.js";
@@ -19,21 +20,31 @@ import { loadTobPaidKeys, saveTobPaidKeys } from "./lib/firestoreTobPaid.js";
 const TAB = {
   QUICK: "quick",
   UPLOAD: "upload",
+  OVERVIEW: "overview",
   TRANSACTIONS: "transactions",
   TOB: "tob",
   INSTRUMENTS: "instruments",
   GUIDE: "guide",
 };
 
-function NavBar({ activeTab, setActiveTab, hasData, tobEligible, rowCount }) {
-  const tabs = [
+const HIDEABLE_TABS = [
+  { id: "transactions", label: "Transactions" },
+  { id: "tob",         label: "Calculate TOB" },
+  { id: "instruments", label: "Instruments" },
+  { id: "guide",       label: "Guide" },
+];
+
+function NavBar({ activeTab, setActiveTab, hasData, tobEligible, rowCount, hiddenTabs = new Set() }) {
+  const allTabs = [
     { id: TAB.QUICK, label: "Quick TOB" },
     { id: TAB.UPLOAD, label: "Upload" },
+    { id: TAB.OVERVIEW, label: "Overview" },
     { id: TAB.TRANSACTIONS, label: `Transactions${rowCount > 0 ? ` (${rowCount})` : ""}`, disabled: !hasData },
     { id: TAB.TOB, label: "Calculate TOB", disabled: !tobEligible },
     { id: TAB.INSTRUMENTS, label: "Instruments" },
     { id: TAB.GUIDE, label: "Guide" },
   ];
+  const tabs = allTabs.filter((t) => !hiddenTabs.has(t.id));
 
   const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 640);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -199,6 +210,40 @@ export default function App() {
   const [dataSource, setDataSource] = useState("file");
   const [instrumentNames, setInstrumentNames] = useState(new Map());
   const instrumentCache = useRef(new Map());
+
+  const [hiddenTabs, setHiddenTabs] = useState(() => {
+    try {
+      const raw = localStorage.getItem("nav_hidden_tabs_v1");
+      return new Set(raw ? JSON.parse(raw) : ["tob", "instruments"]);
+    } catch {
+      return new Set(["tob", "instruments"]);
+    }
+  });
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const settingsRef = useRef(null);
+
+  useEffect(() => {
+    if (!settingsOpen) return;
+    const handler = (e) => {
+      if (settingsRef.current && !settingsRef.current.contains(e.target)) setSettingsOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [settingsOpen]);
+
+  useEffect(() => {
+    if (hiddenTabs.has(activeTab)) setActiveTab(TAB.QUICK);
+  }, [hiddenTabs]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const toggleHiddenTab = useCallback((tabId) => {
+    setHiddenTabs((prev) => {
+      const next = new Set(prev);
+      if (next.has(tabId)) next.delete(tabId);
+      else next.add(tabId);
+      try { localStorage.setItem("nav_hidden_tabs_v1", JSON.stringify([...next])); } catch {}
+      return next;
+    });
+  }, []);
 
   // TOB paid state — persisted to localStorage so it survives page refresh.
   const [tobPaidKeys, setTobPaidKeys] = useState(() => {
@@ -534,7 +579,92 @@ export default function App() {
             Belgian Tax Calc
           </div>
         </div>
-        <AuthBar />
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {/* ── Settings gear ── */}
+          <div ref={settingsRef} style={{ position: "relative" }}>
+            <button
+              type="button"
+              title="Navigation settings"
+              onClick={() => setSettingsOpen((v) => !v)}
+              style={{
+                padding: "7px 10px",
+                border: "1px solid #524e34",
+                borderRadius: 3,
+                background: settingsOpen ? "#1a1a0a" : "transparent",
+                color: settingsOpen ? "#c4a84a" : "#8a7a50",
+                cursor: "pointer",
+                fontSize: 15,
+                lineHeight: 1,
+                transition: "color 0.15s, background 0.15s",
+              }}
+            >
+              ⚙
+            </button>
+            {settingsOpen && (
+              <div
+                style={{
+                  position: "absolute",
+                  right: 0,
+                  top: "calc(100% + 8px)",
+                  background: "#111109",
+                  border: "1px solid #3d3a28",
+                  borderRadius: 6,
+                  paddingTop: 8,
+                  paddingBottom: 8,
+                  minWidth: 230,
+                  zIndex: 200,
+                  boxShadow: "0 6px 24px rgba(0,0,0,0.5)",
+                }}
+              >
+                <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "#5a5440", padding: "2px 16px 10px" }}>
+                  Show in navigation
+                </div>
+                {HIDEABLE_TABS.map(({ id, label }) => {
+                  const visible = !hiddenTabs.has(id);
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => toggleHiddenTab(id)}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 12,
+                        width: "100%",
+                        padding: "10px 16px",
+                        background: "transparent",
+                        border: "none",
+                        cursor: "pointer",
+                        fontFamily: "Georgia, serif",
+                        color: visible ? "#c0b890" : "#5a5440",
+                        fontSize: 13,
+                        textAlign: "left",
+                        transition: "color 0.12s",
+                      }}
+                    >
+                      <span style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        width: 16,
+                        height: 16,
+                        border: `1px solid ${visible ? "#c4a84a" : "#3d3a28"}`,
+                        borderRadius: 3,
+                        background: visible ? "rgba(196,168,74,0.12)" : "transparent",
+                        fontSize: 10,
+                        color: visible ? "#c4a84a" : "transparent",
+                        flexShrink: 0,
+                        transition: "border-color 0.12s, background 0.12s",
+                      }}>✓</span>
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          <AuthBar />
+        </div>
       </header>
 
       {/* ── Nav tabs ── */}
@@ -544,6 +674,7 @@ export default function App() {
         hasData={Boolean(displayParsed) || Boolean(historyParsed)}
         tobEligible={tobEligible}
         rowCount={rowCount}
+        hiddenTabs={hiddenTabs}
       />
 
       {/* ── Auto-sync status banner ── */}
@@ -618,6 +749,15 @@ export default function App() {
               />
             )}
           </div>
+        )}
+
+        {/* ═══ OVERVIEW tab ═══ */}
+        {activeTab === TAB.OVERVIEW && (
+          <Overview
+            displayParsed={displayParsed}
+            instrumentNames={instrumentNames}
+            tobPaidKeys={tobPaidKeys}
+          />
         )}
 
         {/* ═══ TRANSACTIONS tab ═══ */}
