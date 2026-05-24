@@ -268,16 +268,37 @@ export default function QuickTob({
             </div>
           )}
           {Object.values(result.byArt).map((grp) => (
-            <div key={grp.key} style={{ marginBottom: 10, padding: "12px 14px", border: "1px solid #2a2818", borderRadius: 4, background: "#0e0e0a" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
-                <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: "#c4a84a" }}>{grp.art}</span>
-                <span style={{ fontSize: 11, color: "#6a6450" }}>{grp.label}</span>
+            <div key={grp.key} style={{ marginBottom: 12, padding: "18px 20px", border: "1px solid #4a4020", borderRadius: 6, background: "#0e0e0a" }}>
+              {/* Article — what to select */}
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "#5a5440", marginBottom: 5 }}>
+                  Transaction type
+                </div>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+                  <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 20, color: "#c4a84a", letterSpacing: 0.5 }}>
+                    {grp.art}
+                  </span>
+                  <span style={{ fontSize: 11, color: "#6a6450" }}>{grp.label}</span>
+                </div>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr auto", rowGap: 5, columnGap: 24, fontSize: 12 }}>
-                <span style={{ color: "#8a8268" }}>Number of transactions</span>
-                <span style={{ fontFamily: "ui-monospace, monospace", color: "#e8e4db", textAlign: "right" }}>{grp.count}</span>
-                <span style={{ color: "#8a8268" }}>Taxable amount</span>
-                <span style={{ fontFamily: "ui-monospace, monospace", color: "#e8e4db", textAlign: "right" }}>{EUR.format(grp.totalEUR)}</span>
+              {/* Count + Amount — the two values to type in */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div style={{ padding: "14px 16px", background: "#141410", borderRadius: 4, border: "1px solid #2a2818" }}>
+                  <div style={{ fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase", color: "#6a6450", marginBottom: 8 }}>
+                    Number of transactions
+                  </div>
+                  <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 32, color: "#f0ead8", lineHeight: 1 }}>
+                    {grp.count}
+                  </div>
+                </div>
+                <div style={{ padding: "14px 16px", background: "#141410", borderRadius: 4, border: "1px solid #2a2818" }}>
+                  <div style={{ fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase", color: "#6a6450", marginBottom: 8 }}>
+                    Taxable amount
+                  </div>
+                  <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 22, color: "#f0ead8", lineHeight: 1, wordBreak: "break-all" }}>
+                    {EUR.format(grp.totalEUR)}
+                  </div>
+                </div>
               </div>
             </div>
           ))}
