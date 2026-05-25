@@ -532,33 +532,51 @@ export default function App() {
         {activeTab === TAB.UPLOAD && (
           <div>
             {/* ── Get CSV from Revolut ── */}
-            <div style={{ marginBottom: 28, padding: "18px 20px", background: "#18181b", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 6 }}>
-              <div style={{ fontSize: 11, letterSpacing: 2, textTransform: "uppercase", color: "#52525b", marginBottom: 14 }}>
-                Step 1 — Download your CSV from Revolut
-              </div>
-              <div style={{ display: "flex", gap: 20, flexWrap: "wrap", alignItems: "flex-start" }}>
-                <a
-                  href="https://app.revolut.com/invest"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    display: "inline-flex", alignItems: "center", gap: 8, flexShrink: 0,
-                    padding: "12px 20px",
-                    background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.4)", borderRadius: 4,
-                    color: "#f59e0b", fontSize: 12, letterSpacing: 1, textDecoration: "none",
-                    fontFamily: "inherit", textTransform: "uppercase",
-                  }}
-                >
-                  ↗ Open Revolut Invest
-                </a>
-                <ol style={{ margin: 0, padding: "0 0 0 18px", color: "#71717a", fontSize: 13, lineHeight: 2 }}>
-                  <li>Click <strong style={{ color: "#e4e4e7" }}>More</strong> (bottom right)</li>
-                  <li>Go to <strong style={{ color: "#e4e4e7" }}>Documents</strong></li>
-                  <li>Select <strong style={{ color: "#e4e4e7" }}>Stocks</strong> → <strong style={{ color: "#e4e4e7" }}>Account statement</strong></li>
-                  <li>Choose your date range and download the <strong style={{ color: "#e4e4e7" }}>CSV</strong></li>
-                </ol>
-              </div>
-            </div>
+            {(() => {
+              const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+              const btnHref = isMobile ? "revolut://" : "https://app.revolut.com/invest";
+              const btnLabel = isMobile ? "↗ Open Revolut App" : "↗ Open Revolut Invest";
+              return (
+                <div style={{ marginBottom: 28, padding: "18px 20px", background: "#18181b", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 6 }}>
+                  <div style={{ fontSize: 11, letterSpacing: 2, textTransform: "uppercase", color: "#52525b", marginBottom: 14 }}>
+                    Step 1 — Download your CSV from Revolut
+                  </div>
+                  <div style={{ display: "flex", gap: 20, flexWrap: "wrap", alignItems: "flex-start" }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8, flexShrink: 0 }}>
+                      <a
+                        href={btnHref}
+                        {...(!isMobile && { target: "_blank", rel: "noopener noreferrer" })}
+                        style={{
+                          display: "inline-flex", alignItems: "center", gap: 8,
+                          padding: "12px 20px",
+                          background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.4)", borderRadius: 4,
+                          color: "#f59e0b", fontSize: 12, letterSpacing: 1, textDecoration: "none",
+                          fontFamily: "inherit", textTransform: "uppercase",
+                        }}
+                      >
+                        {btnLabel}
+                      </a>
+                      {isMobile && (
+                        <a
+                          href="https://app.revolut.com/invest"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ fontSize: 11, color: "#52525b", textDecoration: "none", textAlign: "center" }}
+                        >
+                          App not opening? Use web version
+                        </a>
+                      )}
+                    </div>
+                    <ol style={{ margin: 0, padding: "0 0 0 18px", color: "#71717a", fontSize: 13, lineHeight: 2 }}>
+                      <li>Click <strong style={{ color: "#e4e4e7" }}>More</strong> (bottom right)</li>
+                      <li>Go to <strong style={{ color: "#e4e4e7" }}>Documents</strong></li>
+                      <li>Select <strong style={{ color: "#e4e4e7" }}>Stocks</strong> → <strong style={{ color: "#e4e4e7" }}>Account statement</strong></li>
+                      <li>Choose your date range and download the <strong style={{ color: "#e4e4e7" }}>CSV</strong></li>
+                    </ol>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* ── Drop zone ── */}
             <div style={{ marginBottom: 8, fontSize: 11, letterSpacing: 2, textTransform: "uppercase", color: "#52525b" }}>
