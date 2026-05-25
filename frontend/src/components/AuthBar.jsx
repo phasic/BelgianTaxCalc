@@ -1,65 +1,35 @@
 import { useAuth } from "../context/AuthContext.jsx";
 
-const btn = (disabled) => ({
-  padding: "8px 14px",
-  border: "1px solid #524e34",
-  borderRadius: 3,
-  background: disabled ? "#181810" : "#1a1a0a",
-  color: disabled ? "#665f42" : "#c4a84a",
-  cursor: disabled ? "not-allowed" : "pointer",
-  fontSize: 11,
-  letterSpacing: 1.2,
-  textTransform: "uppercase",
-  fontFamily: "Georgia, serif",
-});
-
 export default function AuthBar() {
-  const {
-    firebaseConfigured,
-    user,
-    authLoading,
-    authError,
-    setAuthError,
-    signInWithGoogle,
-    signOutUser,
-  } = useAuth();
+  const { firebaseConfigured, user, authLoading, authError, setAuthError, signInWithGoogle, signOutUser } = useAuth();
+
+  const btnStyle = (accent) => ({
+    padding: "6px 14px", borderRadius: 6, fontSize: 13, cursor: "pointer",
+    border: `1px solid ${accent ? "rgba(245,158,11,0.35)" : "rgba(255,255,255,0.1)"}`,
+    background: accent ? "rgba(245,158,11,0.1)" : "transparent",
+    color: accent ? "#f59e0b" : "#a1a1aa",
+    fontWeight: 500, transition: "all 0.15s",
+  });
 
   if (!firebaseConfigured) {
     return (
-      <div
-        style={{
-        fontSize: 11,
-        color: "#a89058",
-          maxWidth: 420,
-          textAlign: "right",
-          lineHeight: 1.5,
-        }}
-      >
+      <div style={{ fontSize: 11, color: "#71717a", maxWidth: 380, textAlign: "right", lineHeight: 1.5 }}>
         Cloud sync disabled — add Firebase keys in{" "}
-        <code style={{ color: "#c4a84a" }}>frontend/.env.local</code> (see{" "}
-        <code style={{ color: "#c4a84a" }}>.env.example</code>).
+        <code style={{ color: "#f59e0b" }}>frontend/.env.local</code>
       </div>
     );
   }
 
   if (authLoading) {
-    return (
-      <div style={{ fontSize: 11, color: "#8a8268", letterSpacing: 2, textTransform: "uppercase" }}>
-        Checking session…
-      </div>
-    );
+    return <div style={{ fontSize: 12, color: "#52525b" }}>Checking session…</div>;
   }
 
   if (user) {
-    const label =
-      user.displayName ||
-      user.email ||
-      user.providerData?.[0]?.uid ||
-      "Signed in";
+    const label = user.displayName || user.email || "Signed in";
     return (
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", justifyContent: "flex-end" }}>
-        <span style={{ fontSize: 12, color: "#c0b890" }}>{label}</span>
-        <button type="button" style={btn(false)} onClick={() => signOutUser().catch((e) => setAuthError(e))}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span style={{ fontSize: 12, color: "#71717a", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>
+        <button type="button" style={btnStyle(false)} onClick={() => signOutUser().catch((e) => setAuthError(e))}>
           Sign out
         </button>
       </div>
@@ -67,18 +37,12 @@ export default function AuthBar() {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "flex-end" }}>
-        <button
-          type="button"
-          style={btn(false)}
-          onClick={() => signInWithGoogle().catch((e) => setAuthError(e))}
-        >
-          Sign in with Google
-        </button>
-      </div>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+      <button type="button" style={btnStyle(true)} onClick={() => signInWithGoogle().catch((e) => setAuthError(e))}>
+        Sign in with Google
+      </button>
       {authError && (
-        <div style={{ fontSize: 11, color: "#c46a4a", maxWidth: 360, textAlign: "right" }}>
+        <div style={{ fontSize: 11, color: "#f87171", maxWidth: 280, textAlign: "right" }}>
           {authError.message || String(authError)}
         </div>
       )}

@@ -10,17 +10,17 @@ const PCT = (r) => `${(r * 100).toFixed(2)}%`;
 
 const inputStyle = {
   padding: "8px 12px",
-  background: "#0d0d0b",
-  border: "1px solid #3d3a28",
-  color: "#e8e4db",
+  background: "#18181b",
+  border: "1px solid rgba(255,255,255,0.07)",
+  color: "#fafafa",
   borderRadius: 3,
-  fontFamily: "Georgia, serif",
+  fontFamily: "inherit",
 };
 
 function CollapsibleSection({ title, badge, children, defaultOpen = false }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div style={{ marginTop: 20, borderTop: "1px solid #2e2c1e", paddingTop: 16 }}>
+    <div style={{ marginTop: 20, borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 16 }}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -42,15 +42,15 @@ function CollapsibleSection({ title, badge, children, defaultOpen = false }) {
             fontSize: 11,
             letterSpacing: 2,
             textTransform: "uppercase",
-            color: "#7a7460",
+            color: "#71717a",
           }}
         >
           {title}
         </span>
         {badge != null && (
-          <span style={{ fontSize: 11, color: "#5a5440" }}>({badge})</span>
+          <span style={{ fontSize: 11, color: "#3f3f46" }}>({badge})</span>
         )}
-        <span style={{ marginLeft: "auto", fontSize: 12, color: "#5a5440" }}>
+        <span style={{ marginLeft: "auto", fontSize: 12, color: "#3f3f46" }}>
           {open ? "▲" : "▼"}
         </span>
       </button>
@@ -71,17 +71,17 @@ function ScopeOption({ id, title, detail, active, disabled, onClick }) {
         textAlign: "left",
         padding: "14px 16px",
         marginBottom: 8,
-        border: active ? "1px solid #c4a84a" : "1px solid #3d3a28",
+        border: active ? "1px solid #f59e0b" : "1px solid rgba(255,255,255,0.07)",
         borderRadius: 4,
-        background: active ? "#1a1a0a" : "#111109",
-        color: "#e8e4db",
+        background: active ? "#1e1e22" : "#18181b",
+        color: "#fafafa",
         cursor: disabled ? "not-allowed" : "pointer",
         opacity: disabled ? 0.4 : 1,
-        fontFamily: "Georgia, serif",
+        fontFamily: "inherit",
       }}
     >
-      <div style={{ fontSize: 14, color: active ? "#c4a84a" : "#d8d0b8", marginBottom: 4 }}>{title}</div>
-      <div style={{ fontSize: 12, color: "#8a8268", lineHeight: 1.5 }}>{detail}</div>
+      <div style={{ fontSize: 14, color: active ? "#f59e0b" : "#d8d0b8", marginBottom: 4 }}>{title}</div>
+      <div style={{ fontSize: 12, color: "#71717a", lineHeight: 1.5 }}>{detail}</div>
     </button>
   );
 }
@@ -188,17 +188,17 @@ export default function TobWizard({ parsed, typeColIndex, dateColIndex, instrume
   return (
     <div
       style={{
-        border: "1px solid #3d3a28",
+        border: "1px solid rgba(255,255,255,0.07)",
         borderRadius: 4,
         background: "#141410",
         padding: "18px 20px",
         marginBottom: 16,
       }}
     >
-      <div style={{ fontSize: 11, letterSpacing: 2, textTransform: "uppercase", color: "#7a7460", marginBottom: 16 }}>
+      <div style={{ fontSize: 11, letterSpacing: 2, textTransform: "uppercase", color: "#71717a", marginBottom: 16 }}>
         TOB — what to include
       </div>
-      <p style={{ margin: "0 0 16px", fontSize: 13, color: "#a89870", lineHeight: 1.6 }}>
+      <p style={{ margin: "0 0 16px", fontSize: 13, color: "#a1a1aa", lineHeight: 1.6 }}>
         Most declarations use a single calendar month (for example March). You can also use a date range, or
         hand-pick buy and sell lines.
       </p>
@@ -222,7 +222,7 @@ export default function TobWizard({ parsed, typeColIndex, dateColIndex, instrume
       {/* Month picker */}
       {scope === "month" && (
         <div style={{ marginTop: 16, display: "flex", flexWrap: "wrap", gap: 16, alignItems: "center" }}>
-          <label style={{ fontSize: 12, color: "#a89870" }}>
+          <label style={{ fontSize: 12, color: "#a1a1aa" }}>
             Month{" "}
             <select
               value={monthIndex}
@@ -234,12 +234,12 @@ export default function TobWizard({ parsed, typeColIndex, dateColIndex, instrume
               ))}
             </select>
           </label>
-          <label style={{ fontSize: 12, color: "#a89870" }}>
+          <label style={{ fontSize: 12, color: "#a1a1aa" }}>
             Year{" "}
             <input
               type="number" min={2000} max={2100} value={year}
               onChange={(e) => { setYear(Number(e.target.value) || year); setResult(null); }}
-              style={{ ...inputStyle, marginLeft: 8, width: 88, fontFamily: "ui-monospace, monospace" }}
+              style={{ ...inputStyle, marginLeft: 8, width: 88, fontFamily: "var(--font-mono)" }}
             />
           </label>
           {!hasDates && (
@@ -269,7 +269,7 @@ export default function TobWizard({ parsed, typeColIndex, dateColIndex, instrume
       {/* Period picker */}
       {scope === "period" && (
         <div style={{ marginTop: 16, display: "flex", flexWrap: "wrap", gap: 16, alignItems: "center" }}>
-          <label style={{ fontSize: 12, color: "#a89870" }}>
+          <label style={{ fontSize: 12, color: "#a1a1aa" }}>
             From{" "}
             <input
               type="date"
@@ -280,7 +280,7 @@ export default function TobWizard({ parsed, typeColIndex, dateColIndex, instrume
               style={{ ...inputStyle, marginLeft: 8 }}
             />
           </label>
-          <label style={{ fontSize: 12, color: "#a89870" }}>
+          <label style={{ fontSize: 12, color: "#a1a1aa" }}>
             To{" "}
             <input
               type="date"
@@ -298,16 +298,16 @@ export default function TobWizard({ parsed, typeColIndex, dateColIndex, instrume
               style={{
                 padding: "8px 14px",
                 border: periodStart === dateRange.min && periodEnd === dateRange.max
-                  ? "1px solid #c4a84a" : "1px solid #3d3a28",
+                  ? "1px solid #f59e0b" : "1px solid rgba(255,255,255,0.07)",
                 borderRadius: 3,
                 background: "transparent",
                 color: periodStart === dateRange.min && periodEnd === dateRange.max
-                  ? "#c4a84a" : "#a89870",
+                  ? "#f59e0b" : "#a1a1aa",
                 cursor: "pointer",
                 fontSize: 11,
                 letterSpacing: 1.2,
                 textTransform: "uppercase",
-                fontFamily: "Georgia, serif",
+                fontFamily: "inherit",
               }}
             >
               Full range
@@ -345,7 +345,7 @@ export default function TobWizard({ parsed, typeColIndex, dateColIndex, instrume
           title="Buy and sell only"
           badge={`${selectedIndices.size} line${selectedIndices.size === 1 ? "" : "s"} selected for TOB`}
         >
-          <p style={{ margin: "0 0 10px", fontSize: 12, color: "#a89870", lineHeight: 1.6 }}>
+          <p style={{ margin: "0 0 10px", fontSize: 12, color: "#a1a1aa", lineHeight: 1.6 }}>
             Cash movements and dividends are hidden here.
           </p>
           <TobScopeTable
@@ -367,15 +367,15 @@ export default function TobWizard({ parsed, typeColIndex, dateColIndex, instrume
           onClick={runCalculation}
           style={{
             padding: "12px 22px",
-            border: "1px solid #c4a84a",
+            border: "1px solid #f59e0b",
             borderRadius: 4,
             background: "#2a2410",
-            color: "#c4a84a",
+            color: "#f59e0b",
             cursor: "pointer",
             fontSize: 12,
             letterSpacing: 2,
             textTransform: "uppercase",
-            fontFamily: "Georgia, serif",
+            fontFamily: "inherit",
           }}
         >
           Run calculation
@@ -384,7 +384,7 @@ export default function TobWizard({ parsed, typeColIndex, dateColIndex, instrume
 
       {/* Error */}
       {result?.error && (
-        <div style={{ marginTop: 16, padding: 14, background: "#1a0a0a", border: "1px solid #3a1515", borderRadius: 3, color: "#c46a4a", fontSize: 13 }}>
+        <div style={{ marginTop: 16, padding: 14, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)", borderRadius: 3, color: "#f87171", fontSize: 13 }}>
           {result.error}
         </div>
       )}
@@ -395,58 +395,58 @@ export default function TobWizard({ parsed, typeColIndex, dateColIndex, instrume
 
           {/* --- Unresolved instruments error --- */}
           {result.unresolvedTickers?.length > 0 && (
-            <div style={{ marginBottom: 16, padding: "14px 18px", background: "#1a0a0a", border: "1px solid #6a2020", borderRadius: 4 }}>
-              <div style={{ fontSize: 12, color: "#c04848", marginBottom: 8, letterSpacing: 0.5 }}>
+            <div style={{ marginBottom: 16, padding: "14px 18px", background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)", borderRadius: 4 }}>
+              <div style={{ fontSize: 12, color: "#ef4444", marginBottom: 8, letterSpacing: 0.5 }}>
                 {result.unresolvedTickers.length} ticker{result.unresolvedTickers.length > 1 ? "s" : ""} could not be classified and are excluded from the total
               </div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
                 {result.unresolvedTickers.map((t) => (
-                  <span key={t} style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, padding: "2px 8px", background: "#2a1010", border: "1px solid #6a2020", borderRadius: 3, color: "#e07070" }}>
+                  <span key={t} style={{ fontFamily: "var(--font-mono)", fontSize: 11, padding: "2px 8px", background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)", borderRadius: 3, color: "#f87171" }}>
                     {t}
                   </span>
                 ))}
               </div>
-              <div style={{ fontSize: 11, color: "#7a5050", fontStyle: "italic" }}>
+              <div style={{ fontSize: 11, color: "#71717a", fontStyle: "italic" }}>
                 Resolve instrument types via OpenFIGI in the Transactions tab, then recalculate.
               </div>
             </div>
           )}
 
           {/* --- Government form fill-in --- */}
-          <div style={{ marginBottom: 20, padding: 18, background: "#111109", border: "1px solid #3d3a28", borderRadius: 4 }}>
-            <div style={{ fontSize: 11, letterSpacing: 2, textTransform: "uppercase", color: "#7a7460", marginBottom: 14 }}>
+          <div style={{ marginBottom: 20, padding: 18, background: "#18181b", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 4 }}>
+            <div style={{ fontSize: 11, letterSpacing: 2, textTransform: "uppercase", color: "#71717a", marginBottom: 14 }}>
               Fill in at divtax.minfin.fgov.be — {result.scopeLabel}
             </div>
 
             {Object.values(result.byArt).map((grp) => (
-              <div key={grp.key} style={{ marginBottom: 12, padding: "18px 20px", border: "1px solid #4a4020", borderRadius: 6, background: "#0e0e0a" }}>
+              <div key={grp.key} style={{ marginBottom: 12, padding: "18px 20px", border: "1px solid #4a4020", borderRadius: 6, background: "#18181b" }}>
                 {/* Article — what to select */}
                 <div style={{ marginBottom: 16 }}>
-                  <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "#5a5440", marginBottom: 5 }}>
+                  <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "#3f3f46", marginBottom: 5 }}>
                     Transaction type
                   </div>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
-                    <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 20, color: "#c4a84a", letterSpacing: 0.5 }}>
+                    <span style={{ fontFamily: "var(--font-mono)", fontSize: 20, color: "#f59e0b", letterSpacing: 0.5 }}>
                       {grp.art}
                     </span>
-                    <span style={{ fontSize: 11, color: "#6a6450" }}>{grp.label}</span>
+                    <span style={{ fontSize: 11, color: "#52525b" }}>{grp.label}</span>
                   </div>
                 </div>
                 {/* Count + Amount — the two values to type in */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                  <div style={{ padding: "14px 16px", background: "#141410", borderRadius: 4, border: "1px solid #2a2818" }}>
-                    <div style={{ fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase", color: "#6a6450", marginBottom: 8 }}>
+                  <div style={{ padding: "14px 16px", background: "#141410", borderRadius: 4, border: "1px solid #232328" }}>
+                    <div style={{ fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase", color: "#52525b", marginBottom: 8 }}>
                       Number of transactions
                     </div>
-                    <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 32, color: "#f0ead8", lineHeight: 1 }}>
+                    <div style={{ fontFamily: "var(--font-mono)", fontSize: 32, color: "#f0ead8", lineHeight: 1 }}>
                       {grp.count}
                     </div>
                   </div>
-                  <div style={{ padding: "14px 16px", background: "#141410", borderRadius: 4, border: "1px solid #2a2818" }}>
-                    <div style={{ fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase", color: "#6a6450", marginBottom: 8 }}>
+                  <div style={{ padding: "14px 16px", background: "#141410", borderRadius: 4, border: "1px solid #232328" }}>
+                    <div style={{ fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase", color: "#52525b", marginBottom: 8 }}>
                       Taxable amount
                     </div>
-                    <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 22, color: "#f0ead8", lineHeight: 1, wordBreak: "break-all" }}>
+                    <div style={{ fontFamily: "var(--font-mono)", fontSize: 22, color: "#f0ead8", lineHeight: 1, wordBreak: "break-all" }}>
                       {EUR.format(grp.totalEUR)}
                     </div>
                   </div>
@@ -455,19 +455,19 @@ export default function TobWizard({ parsed, typeColIndex, dateColIndex, instrume
             ))}
 
             {/* Calculated TOB — double-check */}
-            <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #282618" }}>
-              <div style={{ fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", color: "#6a6450", marginBottom: 8 }}>
+            <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #1c1c20" }}>
+              <div style={{ fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", color: "#52525b", marginBottom: 8 }}>
                 Calculated TOB (double-check)
               </div>
               {Object.values(result.byArt).map((grp) => (
-                <div key={grp.key} style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#7a7460", marginBottom: 4 }}>
-                  <span>{grp.art} <span style={{ fontFamily: "ui-monospace, monospace" }}>({PCT(grp.rate)})</span></span>
-                  <span style={{ fontFamily: "ui-monospace, monospace", color: "#c8c080" }}>{EUR.format(grp.totalTOB)}</span>
+                <div key={grp.key} style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#71717a", marginBottom: 4 }}>
+                  <span>{grp.art} <span style={{ fontFamily: "var(--font-mono)" }}>({PCT(grp.rate)})</span></span>
+                  <span style={{ fontFamily: "var(--font-mono)", color: "#f59e0b" }}>{EUR.format(grp.totalTOB)}</span>
                 </div>
               ))}
-              <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "baseline", gap: 16, marginTop: 10, paddingTop: 10, borderTop: "1px solid #3d3a28" }}>
-                <span style={{ fontSize: 12, letterSpacing: 1.5, textTransform: "uppercase", color: "#a89870" }}>Total TOB due</span>
-                <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 20, color: "#f0e060", letterSpacing: 1 }}>
+              <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "baseline", gap: 16, marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+                <span style={{ fontSize: 12, letterSpacing: 1.5, textTransform: "uppercase", color: "#a1a1aa" }}>Total TOB due</span>
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: 20, color: "#fbbf24", letterSpacing: 1 }}>
                   {EUR.format(result.totalTOB)}
                 </span>
               </div>
@@ -492,31 +492,31 @@ export default function TobWizard({ parsed, typeColIndex, dateColIndex, instrume
             style={{
               marginTop: 28,
               padding: "22px 24px",
-              background: "#111109",
-              border: "1px solid #3d3a28",
+              background: "#18181b",
+              border: "1px solid rgba(255,255,255,0.07)",
               borderRadius: 4,
             }}
           >
-            <div style={{ fontSize: 11, letterSpacing: 2, textTransform: "uppercase", color: "#7a7460", marginBottom: 16 }}>
+            <div style={{ fontSize: 11, letterSpacing: 2, textTransform: "uppercase", color: "#71717a", marginBottom: 16 }}>
               Next steps — filing with the Belgian government
             </div>
 
-            <p style={{ margin: "0 0 14px", fontSize: 13, color: "#c0b890", lineHeight: 1.7 }}>
+            <p style={{ margin: "0 0 14px", fontSize: 13, color: "#d4d4d8", lineHeight: 1.7 }}>
               Belgian residents must declare and pay TOB themselves each month via{" "}
-              <strong style={{ color: "#e8e4db" }}>divtax.minfin.fgov.be</strong>.
+              <strong style={{ color: "#fafafa" }}>divtax.minfin.fgov.be</strong>.
               The deadline is the{" "}
-              <strong style={{ color: "#e8e4db" }}>last workday of the second month following the transactions</strong>{" "}
+              <strong style={{ color: "#fafafa" }}>last workday of the second month following the transactions</strong>{" "}
               (e.g. transactions in May → deadline is the last workday of July).
             </p>
 
-            <ol style={{ margin: "0 0 20px", paddingLeft: 22, fontSize: 13, color: "#c0b890", lineHeight: 2.1 }}>
+            <ol style={{ margin: "0 0 20px", paddingLeft: 22, fontSize: 13, color: "#d4d4d8", lineHeight: 2.1 }}>
               <li>
                 Go to{" "}
                 <a
                   href="https://divtax.minfin.fgov.be/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ color: "#c4a84a", textDecoration: "none", borderBottom: "1px solid #c4a84a55" }}
+                  style={{ color: "#f59e0b", textDecoration: "none", borderBottom: "1px solid #f59e0b55" }}
                 >
                   divtax.minfin.fgov.be
                 </a>{" "}
@@ -532,7 +532,7 @@ export default function TobWizard({ parsed, typeColIndex, dateColIndex, instrume
               </li>
               <li>
                 Submit the declaration and pay the total TOB of{" "}
-                <strong style={{ color: "#f0e060", fontFamily: "ui-monospace, monospace" }}>
+                <strong style={{ color: "#fbbf24", fontFamily: "var(--font-mono)" }}>
                   {EUR.format(result.totalTOB)}
                 </strong>{" "}
                 before the deadline.
@@ -544,7 +544,7 @@ export default function TobWizard({ parsed, typeColIndex, dateColIndex, instrume
                 display: "flex",
                 flexWrap: "wrap",
                 gap: 10,
-                borderTop: "1px solid #2e2c1e",
+                borderTop: "1px solid rgba(255,255,255,0.06)",
                 paddingTop: 16,
                 marginBottom: 16,
               }}
@@ -564,14 +564,14 @@ export default function TobWizard({ parsed, typeColIndex, dateColIndex, instrume
                     alignItems: "center",
                     gap: 6,
                     padding: "8px 14px",
-                    border: "1px solid #524e34",
+                    border: "1px solid rgba(245,158,11,0.3)",
                     borderRadius: 3,
-                    background: "#181810",
-                    color: "#c4a84a",
+                    background: "#1c1c20",
+                    color: "#f59e0b",
                     fontSize: 11,
                     letterSpacing: 1,
                     textDecoration: "none",
-                    fontFamily: "Georgia, serif",
+                    fontFamily: "inherit",
                     textTransform: "uppercase",
                   }}
                 >
@@ -580,7 +580,7 @@ export default function TobWizard({ parsed, typeColIndex, dateColIndex, instrume
               ))}
             </div>
 
-            <p style={{ margin: 0, fontSize: 11, color: "#7a7460", lineHeight: 1.6 }}>
+            <p style={{ margin: 0, fontSize: 11, color: "#71717a", lineHeight: 1.6 }}>
               This tool provides a calculation aid only and does not constitute tax advice.
               Verify your declaration with official SPF Finances documentation or a tax advisor.
             </p>
