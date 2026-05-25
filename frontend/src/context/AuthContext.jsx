@@ -11,6 +11,7 @@ import {
   onAuthStateChanged,
   signInWithPopup,
   signOut,
+  updateProfile,
 } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db, firebaseConfigured } from "../lib/firebase.js";
@@ -33,6 +34,11 @@ export function AuthProvider({ children }) {
         return;
       }
       setUser(undefined);
+      // Sync displayName from Google provider data if it has changed
+      const googleName = u.providerData.find((p) => p.providerId === "google.com")?.displayName;
+      if (googleName && googleName !== u.displayName) {
+        try { await updateProfile(u, { displayName: googleName }); } catch { /* non-critical */ }
+      }
       if (!db) {
         setUser(u);
         setAuthError(null);
