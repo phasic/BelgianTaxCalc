@@ -6,11 +6,11 @@ const thStyle = {
   textAlign: "left",
   padding: "10px 12px",
   fontWeight: 400,
-  color: "#a89870",
+  color: "#a1a1aa",
   fontSize: 10,
   letterSpacing: 1,
   textTransform: "uppercase",
-  borderBottom: "1px solid #3d3a28",
+  borderBottom: "1px solid rgba(255,255,255,0.07)",
   whiteSpace: "nowrap",
 };
 
@@ -39,14 +39,14 @@ export default function TobScopeTable({
         maxHeight: "min(50vh, 420px)",
         overflowY: "auto",
         marginTop: 12,
-        border: "1px solid #3d3a28",
+        border: "1px solid rgba(255,255,255,0.07)",
         borderRadius: 4,
-        background: "#0d0d0b",
+        background: "#18181b",
       }}
     >
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 560 }}>
         <thead>
-          <tr style={{ position: "sticky", top: 0, background: "#14140f", zIndex: 1 }}>
+          <tr style={{ position: "sticky", top: 0, background: "#1c1c20", zIndex: 1 }}>
             {showCheckbox && (
               <th
                 style={{
@@ -78,7 +78,7 @@ export default function TobScopeTable({
             <tr>
               <td
                 colSpan={colSpan}
-                style={{ padding: "24px 16px", textAlign: "center", color: "#8a8268", fontSize: 13 }}
+                style={{ padding: "24px 16px", textAlign: "center", color: "#71717a", fontSize: 13 }}
               >
                 {emptyLabel}
               </td>
@@ -94,7 +94,7 @@ export default function TobScopeTable({
                   : null;
 
               return (
-                <tr key={sourceIndex} style={{ borderTop: "1px solid #282618" }}>
+                <tr key={sourceIndex} style={{ borderTop: "1px solid #1c1c20" }}>
                   {showCheckbox && (
                     <td style={{ textAlign: "center", verticalAlign: "middle", padding: "8px" }}>
                       <input
@@ -114,8 +114,8 @@ export default function TobScopeTable({
                         key={ci}
                         style={{
                           padding: "10px 12px",
-                          color: isTicker && cell ? "#c4a84a" : "#c0b890",
-                          fontFamily: isTicker && cell ? "ui-monospace, monospace" : "inherit",
+                          color: isTicker && cell ? "#f59e0b" : "#d4d4d8",
+                          fontFamily: isTicker && cell ? "var(--font-mono)" : "inherit",
                           verticalAlign: "top",
                         }}
                       >
@@ -141,7 +141,7 @@ export default function TobScopeTable({
                   <td
                     style={{
                       padding: "10px 12px",
-                      color: instrumentTypeLabel === "Fund" ? "#7a9870" : instrumentTypeLabel === "Share" ? "#7a8898" : "#3a3830",
+                      color: instrumentTypeLabel === "Fund" ? "#7a9870" : instrumentTypeLabel === "Share" ? "#7a8898" : "#3f3f46",
                       fontSize: 11,
                       letterSpacing: 0.5,
                       verticalAlign: "top",

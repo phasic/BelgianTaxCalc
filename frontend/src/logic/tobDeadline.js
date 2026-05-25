@@ -40,14 +40,14 @@ export function getDaysUntilDeadline(deadline) {
  * `bg` may be null (transparent).
  */
 export function deadlineStyle(deadline, isPaid) {
-  if (isPaid) return { bg: "#0c1f0c", text: "#72c472" };
+  if (isPaid) return { bg: "rgba(34,197,94,0.10)", text: "#22c55e" };
   if (!deadline) return null;
   const days = getDaysUntilDeadline(deadline);
-  if (days < 0)   return { bg: "#2a0808", text: "#ff5555" }; // overdue
-  if (days <= 7)  return { bg: "#281008", text: "#ff8040" }; // < 1 week
-  if (days <= 21) return { bg: "#221808", text: "#e8a040" }; // < 3 weeks
-  if (days <= 60) return { bg: "#1c1708", text: "#c4a84a" }; // < 2 months
-  return { bg: null, text: "#7a7460" };                       // plenty of time
+  if (days < 0)   return { bg: "rgba(239,68,68,0.10)",   text: "#ef4444" }; // overdue
+  if (days <= 7)  return { bg: "rgba(249,115,22,0.10)",  text: "#f97316" }; // < 1 week
+  if (days <= 21) return { bg: "rgba(245,158,11,0.10)",  text: "#f59e0b" }; // < 3 weeks
+  if (days <= 60) return { bg: "rgba(245,158,11,0.06)",  text: "#d97706" }; // < 2 months
+  return { bg: null, text: "#71717a" };                                       // plenty of time
 }
 
 /**

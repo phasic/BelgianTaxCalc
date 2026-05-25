@@ -8,11 +8,11 @@ const thStyle = {
   textAlign: "left",
   padding: "10px 12px",
   fontWeight: 400,
-  color: "#a89870",
+  color: "#a1a1aa",
   fontSize: 10,
   letterSpacing: 1,
   textTransform: "uppercase",
-  borderBottom: "1px solid #3d3a28",
+  borderBottom: "1px solid rgba(255,255,255,0.07)",
   whiteSpace: "nowrap",
 };
 
@@ -68,47 +68,47 @@ function MobileCard({ sourceIndex, row, headers, ticker, classification, eurAmou
   return (
     <div style={{
       padding: "14px 16px",
-      borderTop: "1px solid #282618",
-      background: isPaid ? "#0c130c" : "transparent",
+      borderTop: "1px solid #1c1c20",
+      background: isPaid ? "rgba(34,197,94,0.06)" : "transparent",
     }}>
       {/* Ticker + Type + TOB amount */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
             {ticker && (
-              <span style={{ fontFamily: "ui-monospace, monospace", color: "#c4a84a", fontSize: 14 }}>{ticker}</span>
+              <span style={{ fontFamily: "var(--font-mono)", color: "#f59e0b", fontSize: 14 }}>{ticker}</span>
             )}
             {typeCell && (
-              <span style={{ fontSize: 10, color: "#8a8268", letterSpacing: 1, textTransform: "uppercase" }}>{typeCell}</span>
+              <span style={{ fontSize: 10, color: "#71717a", letterSpacing: 1, textTransform: "uppercase" }}>{typeCell}</span>
             )}
           </div>
           {instrument?.name && (
-            <div style={{ fontSize: 11, color: "#6a6050", fontStyle: "italic", marginTop: 2 }}>{instrument.name}</div>
+            <div style={{ fontSize: 11, color: "#52525b", fontStyle: "italic", marginTop: 2 }}>{instrument.name}</div>
           )}
         </div>
         <div style={{ textAlign: "right", flexShrink: 0 }}>
           {classification.unresolved ? (
-            <span style={{ fontSize: 12, color: "#c04848" }}>unresolved</span>
+            <span style={{ fontSize: 12, color: "#ef4444" }}>unresolved</span>
           ) : tobAmount !== null ? (
             <>
-              <div style={{ fontFamily: "ui-monospace, monospace", color: "#e8d890", fontSize: 15 }}>
+              <div style={{ fontFamily: "var(--font-mono)", color: "#fde68a", fontSize: 15 }}>
                 {EUR.format(tobAmount)}
                 {capped && <span style={{ fontSize: 10, color: "#9a7040", marginLeft: 3 }}>(max)</span>}
               </div>
               {eurAmount !== null && (
-                <div style={{ fontSize: 10, color: "#7a7460" }}>on {EUR.format(eurAmount)}</div>
+                <div style={{ fontSize: 10, color: "#71717a" }}>on {EUR.format(eurAmount)}</div>
               )}
             </>
-          ) : <span style={{ color: "#7a7460" }}>—</span>}
+          ) : <span style={{ color: "#71717a" }}>—</span>}
         </div>
       </div>
 
       {/* Date + Classification + Deadline badge */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
-        <div style={{ fontSize: 11, color: "#6a6450" }}>
+        <div style={{ fontSize: 11, color: "#52525b" }}>
           {shortDate}
           {!classification.unresolved && (
-            <span style={{ marginLeft: 6, fontFamily: "ui-monospace, monospace", color: "#7a7050" }}>
+            <span style={{ marginLeft: 6, fontFamily: "var(--font-mono)", color: "#7a7050" }}>
               · {classification.art}
             </span>
           )}
@@ -124,24 +124,24 @@ function MobileCard({ sourceIndex, row, headers, ticker, classification, eurAmou
               flexDirection: "column",
               alignItems: "flex-end",
               padding: "5px 10px",
-              background: ds?.bg ?? "#111109",
-              border: "1px solid " + (isPaid ? "#2a5228" : (days !== null && days < 0 ? "#6a2020" : "#2e2c1e")),
+              background: ds?.bg ?? "#18181b",
+              border: "1px solid " + (isPaid ? "rgba(34,197,94,0.25)" : (days !== null && days < 0 ? "rgba(239,68,68,0.25)" : "rgba(255,255,255,0.06)")),
               borderRadius: 4,
               cursor: "pointer",
               fontFamily: "inherit",
               minWidth: 96,
             }}
           >
-            <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, color: ds?.text ?? "#7a7460" }}>
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: ds?.text ?? "#71717a" }}>
               {formatDeadline(deadline)}
             </span>
-            <span style={{ fontSize: 10, color: ds?.text ?? "#7a7460", opacity: 0.85 }}>{daysLabel}</span>
+            <span style={{ fontSize: 10, color: ds?.text ?? "#71717a", opacity: 0.85 }}>{daysLabel}</span>
           </button>
         )}
       </div>
 
       {classification.unresolved && (
-        <div style={{ marginTop: 6, fontSize: 11, color: "#7a5050", fontStyle: "italic" }}>
+        <div style={{ marginTop: 6, fontSize: 11, color: "#71717a", fontStyle: "italic" }}>
           {classification.basis} — resolve in Instruments tab
         </div>
       )}
@@ -168,9 +168,9 @@ export default function TobResultTable({ headers, lineItems, instrumentNames = n
   if (isMobile) {
     return (
       <div style={{
-        border: "1px solid #3d3a28",
+        border: "1px solid rgba(255,255,255,0.07)",
         borderRadius: 4,
-        background: "#0d0d0b",
+        background: "#18181b",
         overflowY: "auto",
         maxHeight: "min(60vh, 520px)",
         marginTop: 12,
@@ -203,14 +203,14 @@ export default function TobResultTable({ headers, lineItems, instrumentNames = n
         maxHeight: "min(60vh, 520px)",
         overflowY: "auto",
         marginTop: 12,
-        border: "1px solid #3d3a28",
+        border: "1px solid rgba(255,255,255,0.07)",
         borderRadius: 4,
-        background: "#0d0d0b",
+        background: "#18181b",
       }}
     >
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 520 }}>
         <thead>
-          <tr style={{ position: "sticky", top: 0, background: "#14140f", zIndex: 1 }}>
+          <tr style={{ position: "sticky", top: 0, background: "#1c1c20", zIndex: 1 }}>
             {visibleCols.flatMap((hi) => {
               const h = headers[hi];
               const thEl = <th key={`${hi}-${h}`} style={thStyle}>{h}</th>;
@@ -230,7 +230,7 @@ export default function TobResultTable({ headers, lineItems, instrumentNames = n
             const instrument = ticker ? instrumentNames.get(ticker) : null;
             const instrumentInfo = ticker ? instrumentNames.get(ticker) : null;
             return (
-              <tr key={sourceIndex} style={{ borderTop: "1px solid #282618" }}>
+              <tr key={sourceIndex} style={{ borderTop: "1px solid #1c1c20" }}>
                 {visibleCols.flatMap((ci) => {
                   const cell = row[ci];
                   const header = headers[ci] ?? "";
@@ -240,14 +240,14 @@ export default function TobResultTable({ headers, lineItems, instrumentNames = n
                       key={ci}
                       style={{
                         padding: "10px 12px",
-                        color: isTicker && cell ? "#c4a84a" : "#c0b890",
-                        fontFamily: isTicker && cell ? "ui-monospace, monospace" : "inherit",
+                        color: isTicker && cell ? "#f59e0b" : "#d4d4d8",
+                        fontFamily: isTicker && cell ? "var(--font-mono)" : "inherit",
                         verticalAlign: "top",
                       }}
                     >
                       {formatCellDisplay(header, cell)}
                       {isTicker && instrument?.name && (
-                        <div style={{ fontFamily: "Georgia, serif", fontSize: 11, color: "#6a6050", marginTop: 3, fontStyle: "italic" }}>
+                        <div style={{ fontFamily: "inherit", fontSize: 11, color: "#52525b", marginTop: 3, fontStyle: "italic" }}>
                           {instrument.name}
                         </div>
                       )}
@@ -276,19 +276,19 @@ export default function TobResultTable({ headers, lineItems, instrumentNames = n
                   updateManualType={updateManualType}
                 />
 
-                <td style={{ padding: "10px 12px", whiteSpace: "nowrap", verticalAlign: "top", fontFamily: "ui-monospace, monospace", fontSize: 12 }}>
+                <td style={{ padding: "10px 12px", whiteSpace: "nowrap", verticalAlign: "top", fontFamily: "var(--font-mono)", fontSize: 12 }}>
                   {classification.unresolved ? (
-                    <span style={{ color: "#c04848" }}>
+                    <span style={{ color: "#ef4444" }}>
                       ! unresolved
-                      <div style={{ fontSize: 10, color: "#9a5040", marginTop: 2, fontFamily: "Georgia, serif", fontStyle: "italic", maxWidth: 160, whiteSpace: "normal" }}>
+                      <div style={{ fontSize: 10, color: "#f97316", marginTop: 2, fontFamily: "inherit", fontStyle: "italic", maxWidth: 160, whiteSpace: "normal" }}>
                         {classification.basis}
                       </div>
                     </span>
                   ) : (
-                    <span style={{ color: "#c4a84a" }}>
+                    <span style={{ color: "#f59e0b" }}>
                       {classification.art}
                       {classification.basis && (
-                        <div style={{ fontSize: 10, color: "#7a6a40", marginTop: 2, fontFamily: "Georgia, serif", fontStyle: "italic", maxWidth: 180, whiteSpace: "normal" }}>
+                        <div style={{ fontSize: 10, color: "#7a6a40", marginTop: 2, fontFamily: "inherit", fontStyle: "italic", maxWidth: 180, whiteSpace: "normal" }}>
                           {classification.basis}
                         </div>
                       )}
@@ -296,25 +296,25 @@ export default function TobResultTable({ headers, lineItems, instrumentNames = n
                   )}
                 </td>
 
-                <td style={{ padding: "10px 12px", color: classification.unresolved ? "#4a3a30" : "#c0b890", whiteSpace: "nowrap", verticalAlign: "top", fontFamily: "ui-monospace, monospace", fontSize: 12 }}>
+                <td style={{ padding: "10px 12px", color: classification.unresolved ? "#3f3f46" : "#d4d4d8", whiteSpace: "nowrap", verticalAlign: "top", fontFamily: "var(--font-mono)", fontSize: 12 }}>
                   {classification.unresolved ? "—" : PCT(classification.rate)}
                 </td>
 
-                <td style={{ padding: "10px 12px", textAlign: "right", verticalAlign: "top", whiteSpace: "nowrap", fontFamily: "ui-monospace, monospace" }}>
+                <td style={{ padding: "10px 12px", textAlign: "right", verticalAlign: "top", whiteSpace: "nowrap", fontFamily: "var(--font-mono)" }}>
                   {classification.unresolved ? (
-                    <span style={{ color: "#c04848", fontSize: 11 }}>excluded</span>
+                    <span style={{ color: "#ef4444", fontSize: 11 }}>excluded</span>
                   ) : tobAmount !== null ? (
-                    <span style={{ color: "#e8d890" }}>
+                    <span style={{ color: "#fde68a" }}>
                       {EUR.format(tobAmount)}
                       {capped && (
                         <span style={{ fontSize: 10, color: "#9a7040", marginLeft: 4 }}>(max)</span>
                       )}
                     </span>
                   ) : (
-                    <span style={{ color: "#7a7460" }}>—</span>
+                    <span style={{ color: "#71717a" }}>—</span>
                   )}
                   {!classification.unresolved && eurAmount !== null && (
-                    <div style={{ fontSize: 10, color: "#7a7460", marginTop: 2 }}>
+                    <div style={{ fontSize: 10, color: "#71717a", marginTop: 2 }}>
                       on {EUR.format(eurAmount)}
                     </div>
                   )}

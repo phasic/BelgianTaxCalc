@@ -123,9 +123,9 @@ export default function TransactionsTable({ parsed, typeColIndex, viewFilter, se
   return (
     <div
       style={{
-        border: "1px solid #3d3a28",
+        border: "1px solid rgba(255,255,255,0.07)",
         borderRadius: 4,
-        background: "#111109",
+        background: "#18181b",
         overflow: "hidden",
       }}
     >
@@ -133,7 +133,7 @@ export default function TransactionsTable({ parsed, typeColIndex, viewFilter, se
       <div
         style={{
           padding: "14px 18px",
-          borderBottom: "1px solid #2e2c1e",
+          borderBottom: "1px solid rgba(255,255,255,0.06)",
           display: "flex",
           flexWrap: "wrap",
           alignItems: "center",
@@ -145,7 +145,7 @@ export default function TransactionsTable({ parsed, typeColIndex, viewFilter, se
             fontSize: 11,
             letterSpacing: 2,
             textTransform: "uppercase",
-            color: "#7a7460",
+            color: "#71717a",
             marginRight: "auto",
           }}
         >
@@ -167,16 +167,16 @@ export default function TransactionsTable({ parsed, typeColIndex, viewFilter, se
                 onClick={(e) => { e.stopPropagation(); setViewFilter(id); }}
                 style={{
                   padding: "8px 16px",
-                  border: active ? "1px solid #c4a84a" : "1px solid #3d3a28",
+                  border: active ? "1px solid #f59e0b" : "1px solid rgba(255,255,255,0.07)",
                   borderRadius: 3,
-                  background: active ? "#1a1a0a" : "transparent",
-                  color: active ? "#c4a84a" : "#8a8268",
+                  background: active ? "#1e1e22" : "transparent",
+                  color: active ? "#f59e0b" : "#71717a",
                   cursor: disabled ? "not-allowed" : "pointer",
                   opacity: disabled ? 0.45 : 1,
                   fontSize: 11,
                   letterSpacing: 1.5,
                   textTransform: "uppercase",
-                  fontFamily: "Georgia, serif",
+                  fontFamily: "inherit",
                 }}
               >
                 {label}
@@ -187,12 +187,12 @@ export default function TransactionsTable({ parsed, typeColIndex, viewFilter, se
       </div>
 
       {filterNote && (
-        <div style={{ padding: "10px 18px", fontSize: 12, color: "#b08848", borderBottom: "1px solid #2e2c1e" }}>
+        <div style={{ padding: "10px 18px", fontSize: 12, color: "#b08848", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
           {filterNote}
         </div>
       )}
       {!filterNote && viewFilter !== "all" && (
-        <div style={{ padding: "10px 18px", fontSize: 12, color: "#8a8268", borderBottom: "1px solid #2e2c1e" }}>
+        <div style={{ padding: "10px 18px", fontSize: 12, color: "#71717a", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
           Showing {displayEntries.length} of {parsed.rows.length} rows
           {viewFilter === "tob"       ? " (buy and sell trades only)"
           : viewFilter === "dividends" ? " (dividends only)"
@@ -206,7 +206,7 @@ export default function TransactionsTable({ parsed, typeColIndex, viewFilter, se
       <div style={{ overflowX: "auto", maxHeight: "min(70vh, 640px)", overflowY: "auto" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 640 }}>
           <thead>
-            <tr style={{ position: "sticky", top: 0, background: "#14140f", zIndex: 1 }}>
+            <tr style={{ position: "sticky", top: 0, background: "#1c1c20", zIndex: 1 }}>
               {parsed.headers.flatMap((h, hi) => {
                 if (hi === currencyColIndex) return [];
                 const sortId = sortColIds[hi];
@@ -219,11 +219,11 @@ export default function TransactionsTable({ parsed, typeColIndex, viewFilter, se
                       textAlign: "left",
                       padding: "10px 12px",
                       fontWeight: 400,
-                      color: isActive ? "#c4a84a" : sortId ? "#a89860" : "#8a8060",
+                      color: isActive ? "#f59e0b" : sortId ? "#a89860" : "#8a8060",
                       fontSize: 10,
                       letterSpacing: 1,
                       textTransform: "uppercase",
-                      borderBottom: "1px solid #3d3a28",
+                      borderBottom: "1px solid rgba(255,255,255,0.07)",
                       whiteSpace: "nowrap",
                       cursor: sortId ? "pointer" : "default",
                       userSelect: "none",
@@ -240,7 +240,7 @@ export default function TransactionsTable({ parsed, typeColIndex, viewFilter, se
                 if (hi === dateColIndex) {
                   return [
                     thEl,
-                    <th key="deadline-th" style={{ textAlign: "left", padding: "10px 12px", fontWeight: 400, color: "#8a7a50", fontSize: 10, letterSpacing: 1, textTransform: "uppercase", borderBottom: "1px solid #3d3a28", whiteSpace: "nowrap" }}>
+                    <th key="deadline-th" style={{ textAlign: "left", padding: "10px 12px", fontWeight: 400, color: "#8a7a50", fontSize: 10, letterSpacing: 1, textTransform: "uppercase", borderBottom: "1px solid rgba(255,255,255,0.07)", whiteSpace: "nowrap" }}>
                       TOB Deadline
                     </th>,
                   ];
@@ -252,11 +252,11 @@ export default function TransactionsTable({ parsed, typeColIndex, viewFilter, se
                   textAlign: "left",
                   padding: "10px 12px",
                   fontWeight: 400,
-                  color: "#a89870",
+                  color: "#a1a1aa",
                   fontSize: 10,
                   letterSpacing: 1,
                   textTransform: "uppercase",
-                  borderBottom: "1px solid #3d3a28",
+                  borderBottom: "1px solid rgba(255,255,255,0.07)",
                   whiteSpace: "nowrap",
                 }}
               >
@@ -269,7 +269,7 @@ export default function TransactionsTable({ parsed, typeColIndex, viewFilter, se
               <tr>
                 <td
                   colSpan={parsed.headers.length - (currencyColIndex >= 0 ? 1 : 0) + 2}
-                  style={{ padding: "28px 16px", textAlign: "center", color: "#8a8268", fontSize: 13 }}
+                  style={{ padding: "28px 16px", textAlign: "center", color: "#71717a", fontSize: 13 }}
                 >
                   {viewFilter === "all" ? "No data rows in this file." : "No rows match this filter."}
                 </td>
@@ -283,7 +283,7 @@ export default function TransactionsTable({ parsed, typeColIndex, viewFilter, se
                 const isToB = isTobType(typeStr);
 
                 return (
-                  <tr key={`${sourceIndex}-${ri}`} style={{ borderTop: "1px solid #282618" }}>
+                  <tr key={`${sourceIndex}-${ri}`} style={{ borderTop: "1px solid #1c1c20" }}>
                     {row.flatMap((cell, ci) => {
                       if (ci === currencyColIndex) return [];
                       const header = parsed.headers[ci] ?? "";
@@ -298,14 +298,14 @@ export default function TransactionsTable({ parsed, typeColIndex, viewFilter, se
                           key={ci}
                           style={{
                             padding: "10px 12px",
-                            color: isTicker && cell ? "#c4a84a" : "#c0b890",
-                            fontFamily: isTicker && cell ? "ui-monospace, monospace" : "inherit",
+                            color: isTicker && cell ? "#f59e0b" : "#d4d4d8",
+                            fontFamily: isTicker && cell ? "var(--font-mono)" : "inherit",
                             verticalAlign: "top",
                           }}
                         >
                           {isEurFxRate ? "—" : formatCellDisplay(header, cell)}
                           {instrument?.name && (
-                            <div style={{ fontFamily: "Georgia, serif", fontSize: 11, color: "#6a6050", marginTop: 3, fontStyle: "italic", letterSpacing: 0.2 }}>
+                            <div style={{ fontFamily: "inherit", fontSize: 11, color: "#52525b", marginTop: 3, fontStyle: "italic", letterSpacing: 0.2 }}>
                               {instrument.name}
                             </div>
                           )}

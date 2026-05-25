@@ -17,14 +17,14 @@ export default function FileDropZone({ parsed, fileName, onFile }) {
       onDrop={handleDrop}
       onClick={() => document.getElementById("csv-input")?.click()}
       style={{
-        border: `1px solid ${dragOver ? "#c4a84a" : parsed ? "#524e34" : "#3d3a28"}`,
-        borderRadius: 4,
-        padding: 36,
+        border: `1px dashed ${dragOver ? "#f59e0b" : parsed ? "rgba(245,158,11,0.3)" : "rgba(255,255,255,0.1)"}`,
+        borderRadius: 10,
+        padding: "40px 24px",
         textAlign: "center",
-        background: dragOver ? "#1a1a0a" : "#0f0f0d",
+        background: dragOver ? "rgba(245,158,11,0.05)" : parsed ? "rgba(245,158,11,0.03)" : "rgba(255,255,255,0.02)",
         cursor: "pointer",
         marginBottom: 24,
-        transition: "border-color 0.2s, background 0.2s",
+        transition: "all 0.2s",
       }}
     >
       <input
@@ -36,17 +36,17 @@ export default function FileDropZone({ parsed, fileName, onFile }) {
       />
       {parsed ? (
         <>
-          <div style={{ fontSize: 22, marginBottom: 8 }}>✅</div>
-          <div style={{ color: "#c4a84a", fontSize: 14 }}>{fileName}</div>
-          <div style={{ color: "#8a8268", fontSize: 12, marginTop: 6 }}>
-            {parsed.rows.length} row{parsed.rows.length === 1 ? "" : "s"} in file · click to load another file
+          <div style={{ fontSize: 24, marginBottom: 8 }}>✓</div>
+          <div style={{ color: "#f59e0b", fontSize: 14, fontWeight: 500 }}>{fileName}</div>
+          <div style={{ color: "#71717a", fontSize: 12, marginTop: 6 }}>
+            {parsed.rows.length} row{parsed.rows.length === 1 ? "" : "s"} · tap to load another file
           </div>
         </>
       ) : (
         <>
-          <div style={{ fontSize: 28, marginBottom: 12, opacity: 0.45 }}>⬆</div>
-          <div style={{ color: "#c0b890", fontSize: 14, marginBottom: 6 }}>Drop your Revolut CSV here</div>
-          <div style={{ color: "#8a8268", fontSize: 11, letterSpacing: 1 }}>or click to choose a file</div>
+          <div style={{ fontSize: 28, marginBottom: 12, opacity: 0.3 }}>↑</div>
+          <div style={{ color: "#d4d4d8", fontSize: 14, marginBottom: 6, fontWeight: 500 }}>Drop your Revolut CSV here</div>
+          <div style={{ color: "#52525b", fontSize: 12 }}>or tap to choose a file</div>
         </>
       )}
     </div>

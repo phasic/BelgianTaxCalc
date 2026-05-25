@@ -35,19 +35,19 @@ function StatTile({ label, value, sub, color }) {
       flex: "1 1 calc(50% - 8px)",
       minWidth: 200,
       padding: "28px 24px",
-      background: "#0e0e0a",
+      background: "#18181b",
       border: "1px solid #3a3820",
       borderRadius: 8,
       boxSizing: "border-box",
     }}>
-      <div style={{ fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: "#6a6450", marginBottom: 14 }}>
+      <div style={{ fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: "#52525b", marginBottom: 14 }}>
         {label}
       </div>
-      <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 38, color: color ?? "#f0ead8", lineHeight: 1, wordBreak: "break-all" }}>
+      <div style={{ fontFamily: "var(--font-mono)", fontSize: 38, color: color ?? "#f0ead8", lineHeight: 1, wordBreak: "break-all" }}>
         {value}
       </div>
       {sub && (
-        <div style={{ fontSize: 12, color: "#7a7460", marginTop: 10 }}>{sub}</div>
+        <div style={{ fontSize: 12, color: "#71717a", marginTop: 10 }}>{sub}</div>
       )}
     </div>
   );
@@ -98,7 +98,7 @@ export default function Overview({ displayParsed, instrumentNames = new Map(), t
 
   if (!displayParsed) {
     return (
-      <div style={{ padding: "48px 0", textAlign: "center", color: "#6a6450", fontSize: 14 }}>
+      <div style={{ padding: "48px 0", textAlign: "center", color: "#52525b", fontSize: 14 }}>
         Load transaction data to see your overview.
       </div>
     );
@@ -118,7 +118,7 @@ export default function Overview({ displayParsed, instrumentNames = new Map(), t
           sub={stats.minDate && stats.maxDate
             ? `${fmtMonthYear(stats.minDate)} – ${fmtMonthYear(stats.maxDate)}`
             : null}
-          color="#c4a84a"
+          color="#f59e0b"
         />
         <StatTile
           label="Time span"
@@ -142,12 +142,12 @@ export default function Overview({ displayParsed, instrumentNames = new Map(), t
           sub={allSettled
             ? `all settled · ${EUR.format(stats.totalTOB)} total`
             : `${EUR.format(outstanding)} still outstanding`}
-          color="#72c472"
+          color="#22c55e"
         />
       </div>
 
       {stats.unresolvedCount > 0 && (
-        <div style={{ marginTop: 16, padding: "12px 16px", background: "#1a0a0a", border: "1px solid #3a2020", borderRadius: 4, fontSize: 12, color: "#c04848" }}>
+        <div style={{ marginTop: 16, padding: "12px 16px", background: "rgba(239,68,68,0.08)", border: "1px solid #3a2020", borderRadius: 4, fontSize: 12, color: "#ef4444" }}>
           {stats.unresolvedCount} unresolved ticker{stats.unresolvedCount === 1 ? "" : "s"} excluded from TOB totals — resolve in Instruments tab.
         </div>
       )}

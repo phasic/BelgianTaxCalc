@@ -24,28 +24,10 @@ const OPTIONS = [
     value: "fund_acc_be",
     label: "Accumulating ETF/fund — Belgian-registered (FSMA)",
     sub: "art. 120, 1° — 1,32% · cap €4 000 · also applies if any compartment of the fund is on the FSMA list",
-    color: "#c4943a",
+    color: "#f97316",
   },
 ];
 
-/**
- * Renders a <td> for the "Instrument" column.
- *
- * Behaviour:
- *  - OpenFIGI resolved → shows "Share" / "Fund" without interaction.
- *  - Unresolved (OpenFIGI failed, no manual) → shows "⚠ set type" call-to-action.
- *  - Manually set (OpenFIGI fallback) → shows "⚠ Share" / "⚠ Fund" + click to change/clear.
- *
- * The ⚠ badge signals the classification came from a manual override, not from OpenFIGI.
- * The app silently retries OpenFIGI in the background for manually-typed tickers; once
- * resolved the manual flag is cleared and the badge disappears automatically.
- *
- * Props:
- *   ticker           – ticker symbol (string)
- *   instrumentInfo   – from instrumentNames Map (may be null)
- *   updateManualType – (ticker, "stock"|"fund_dist"|"fund_acc"|"fund_acc_be"|null) => void
- *                      only required when manual interaction is desired
- */
 export default function InstrumentTypeCell({ ticker, instrumentInfo, updateManualType }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState({ x: 0, y: 0 });
@@ -54,9 +36,6 @@ export default function InstrumentTypeCell({ ticker, instrumentInfo, updateManua
   const classification = instrumentInfo ? classifyInstrument(instrumentInfo) : null;
   const isUnresolved = !classification || classification.unresolved;
   const isManual = Boolean(classification?.manual);
-
-  // Only show the type-picker when OpenFIGI couldn't classify (includes manual overrides).
-  // If OpenFIGI fully resolved the type, no manual interaction is offered.
   const isInteractive = Boolean((isUnresolved || isManual) && ticker && updateManualType);
 
   const typeLabel =
@@ -64,15 +43,15 @@ export default function InstrumentTypeCell({ ticker, instrumentInfo, updateManua
       ? classification.key === "120,1_mid"  ? "Share/ETC"
         : classification.key === "120,1_high" ? "Acc (BE)"
         : classification.key === "120,3"      ? "Acc RE"
-        : "Bond/ETF"   // 120,1_low: bonds, ETNs, dist ETFs, acc non-BE
+        : "Bond/ETF"
       : null;
 
   const typeColor =
     classification?.key === "120,1_mid"  ? "#7a8898"
     : classification?.key === "120,1_low"  ? "#7a9870"
-    : classification?.key === "120,1_high" ? "#c4943a"
-    : classification?.key === "120,3"      ? "#c4943a"
-    : "#4a4535";
+    : classification?.key === "120,1_high" ? "#f97316"
+    : classification?.key === "120,3"      ? "#f97316"
+    : "#3f3f46";
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -90,15 +69,8 @@ export default function InstrumentTypeCell({ ticker, instrumentInfo, updateManua
     setMenuOpen((v) => !v);
   };
 
-  const handleSelect = (value) => {
-    updateManualType(ticker, value);
-    setMenuOpen(false);
-  };
-
-  const handleClear = () => {
-    updateManualType(ticker, null);
-    setMenuOpen(false);
-  };
+  const handleSelect = (value) => { updateManualType(ticker, value); setMenuOpen(false); };
+  const handleClear = () => { updateManualType(ticker, null); setMenuOpen(false); };
 
   return (
     <td
@@ -107,97 +79,55 @@ export default function InstrumentTypeCell({ ticker, instrumentInfo, updateManua
         isInteractive
           ? isUnresolved
             ? "OpenFIGI could not classify this ticker — click to set type manually"
-            : "Manually set — click to change or clear (OpenFIGI will re-check automatically)"
+            : "Manually set — click to change or clear"
           : undefined
       }
       style={{
-        padding: "10px 12px",
-        fontSize: 11,
-        letterSpacing: 0.5,
-        verticalAlign: "top",
-        whiteSpace: "nowrap",
+        padding: "10px 12px", fontSize: 11, letterSpacing: 0.3,
+        verticalAlign: "top", whiteSpace: "nowrap",
         cursor: isInteractive ? "pointer" : "default",
-        userSelect: "none",
-        position: "relative",
+        userSelect: "none", position: "relative",
       }}
     >
       {isUnresolved ? (
-        /* ── Unresolved: show call-to-action ── */
         isInteractive ? (
-          <span
-            style={{
-              color: "#7a5a30",
-              borderBottom: "1px dashed #5a4520",
-              paddingBottom: 1,
-            }}
-          >
-            {/* warning triangle with ! */}
-            <span style={{ marginRight: 4, fontSize: 12 }}>⚠</span>
-            set type
+          <span style={{ color: "#71717a", borderBottom: "1px dashed rgba(255,255,255,0.15)", paddingBottom: 1 }}>
+            <span style={{ marginRight: 4 }}>⚠</span>set type
           </span>
         ) : (
-          <span style={{ color: "#3a3830" }}>—</span>
+          <span style={{ color: "#3f3f46" }}>—</span>
         )
       ) : (
-        /* ── Classified: show type label, with ⚠ badge if manual ── */
-        <span style={{ color: isManual ? "#c4a84a" : typeColor }}>
-          {isManual && (
-            <span
-              style={{
-                marginRight: 5,
-                fontSize: 11,
-                color: "#c4943a",
-                fontStyle: "normal",
-              }}
-              title="Manually set — OpenFIGI will override this automatically once resolved"
-            >
-              ⚠
-            </span>
-          )}
+        <span style={{ color: isManual ? "#f59e0b" : typeColor }}>
+          {isManual && <span style={{ marginRight: 4, color: "#f97316" }} title="Manually set">⚠</span>}
           {typeLabel}
         </span>
       )}
 
-      {/* ── Type picker menu ── */}
       {menuOpen && (
         <div
           ref={menuRef}
           style={{
-            position: "fixed",
-            top: menuPos.y + 10,
-            left: menuPos.x,
+            position: "fixed", top: menuPos.y + 10, left: menuPos.x,
             zIndex: 9999,
-            background: "#1a1a10",
-            border: "1px solid #3d3a28",
-            borderRadius: 4,
-            boxShadow: "0 8px 32px rgba(0,0,0,0.75)",
-            overflow: "hidden",
-            minWidth: 280,
+            background: "rgba(24,24,27,0.97)",
+            backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+            border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10,
+            boxShadow: "0 12px 40px rgba(0,0,0,0.7)",
+            overflow: "hidden", minWidth: 300,
           }}
         >
-          <div
-            style={{
-              padding: "8px 14px",
-              fontSize: 10,
-              letterSpacing: 1.5,
-              textTransform: "uppercase",
-              color: "#7a7460",
-              borderBottom: "1px solid #2e2c1e",
-            }}
-          >
+          <div style={{
+            padding: "10px 14px", fontSize: 11, color: "#52525b",
+            borderBottom: "1px solid rgba(255,255,255,0.06)", letterSpacing: 0.3,
+          }}>
             {ticker} — set instrument type manually
           </div>
-          <div
-            style={{
-              padding: "8px 14px 4px",
-              fontSize: 10,
-              color: "#6a5a30",
-              lineHeight: 1.5,
-              borderBottom: "1px solid #1e1c14",
-            }}
-          >
-            ⚠ This is a temporary override. The app retries OpenFIGI automatically
-            and will replace this once it can resolve the ticker.
+          <div style={{
+            padding: "8px 14px", fontSize: 11, color: "#71717a",
+            lineHeight: 1.5, borderBottom: "1px solid rgba(255,255,255,0.04)",
+          }}>
+            ⚠ Temporary override — OpenFIGI will replace this once resolved.
           </div>
 
           {OPTIONS.map((opt) => {
@@ -208,23 +138,16 @@ export default function InstrumentTypeCell({ ticker, instrumentInfo, updateManua
                 type="button"
                 onClick={(e) => { e.stopPropagation(); handleSelect(opt.value); }}
                 style={{
-                  display: "block",
-                  width: "100%",
-                  padding: "11px 16px",
-                  background: active ? "#1e1e14" : "transparent",
-                  border: "none",
-                  borderBottom: "1px solid #1e1c14",
-                  textAlign: "left",
-                  cursor: "pointer",
-                  fontFamily: "Georgia, serif",
+                  display: "block", width: "100%", padding: "11px 16px",
+                  background: active ? "rgba(245,158,11,0.08)" : "transparent",
+                  border: "none", borderBottom: "1px solid rgba(255,255,255,0.04)",
+                  textAlign: "left", cursor: "pointer",
                 }}
               >
-                <div style={{ fontSize: 13, color: active ? "#c4a84a" : opt.color }}>
+                <div style={{ fontSize: 13, color: active ? "#f59e0b" : opt.color, fontWeight: active ? 500 : 400 }}>
                   {active && "✓ "}{opt.label}
                 </div>
-                <div style={{ fontSize: 10, color: "#6a6450", marginTop: 2, letterSpacing: 0.3 }}>
-                  {opt.sub}
-                </div>
+                <div style={{ fontSize: 10, color: "#52525b", marginTop: 2 }}>{opt.sub}</div>
               </button>
             );
           })}
@@ -234,20 +157,13 @@ export default function InstrumentTypeCell({ ticker, instrumentInfo, updateManua
               type="button"
               onClick={(e) => { e.stopPropagation(); handleClear(); }}
               style={{
-                display: "block",
-                width: "100%",
-                padding: "10px 16px",
-                background: "transparent",
-                border: "none",
-                textAlign: "left",
-                cursor: "pointer",
-                fontSize: 11,
-                color: "#7a7460",
-                fontFamily: "Georgia, serif",
-                letterSpacing: 0.5,
+                display: "block", width: "100%", padding: "10px 16px",
+                background: "transparent", border: "none",
+                textAlign: "left", cursor: "pointer",
+                fontSize: 11, color: "#71717a",
               }}
             >
-              ✕  Clear manual override (revert to OpenFIGI)
+              ✕  Clear manual override
             </button>
           )}
         </div>

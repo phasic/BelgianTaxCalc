@@ -71,7 +71,7 @@ export default function InstrumentList({ updateManualType, instrumentNames }) {
         style={{
           padding: "60px 0",
           textAlign: "center",
-          color: "#6a6450",
+          color: "#52525b",
           fontSize: 13,
           lineHeight: 1.8,
         }}
@@ -87,7 +87,7 @@ export default function InstrumentList({ updateManualType, instrumentNames }) {
         style={{
           padding: "60px 0",
           textAlign: "center",
-          color: "#6a6450",
+          color: "#52525b",
           fontSize: 13,
         }}
       >
@@ -100,11 +100,11 @@ export default function InstrumentList({ updateManualType, instrumentNames }) {
     return (
       <div
         style={{
-          background: "#1a0a0a",
-          border: "1px solid #3a1515",
+          background: "rgba(239,68,68,0.08)",
+          border: "1px solid rgba(239,68,68,0.25)",
           borderRadius: 3,
           padding: 16,
-          color: "#c46a4a",
+          color: "#f87171",
           fontSize: 13,
         }}
       >
@@ -119,7 +119,7 @@ export default function InstrumentList({ updateManualType, instrumentNames }) {
         style={{
           padding: "60px 0",
           textAlign: "center",
-          color: "#6a6450",
+          color: "#52525b",
           fontSize: 13,
           lineHeight: 1.8,
         }}
@@ -180,7 +180,7 @@ export default function InstrumentList({ updateManualType, instrumentNames }) {
               fontSize: 16,
               fontWeight: 400,
               margin: 0,
-              color: "#e8e4db",
+              color: "#fafafa",
               letterSpacing: 0.5,
             }}
           >
@@ -190,7 +190,7 @@ export default function InstrumentList({ updateManualType, instrumentNames }) {
             style={{
               margin: "6px 0 0",
               fontSize: 12,
-              color: "#6a6450",
+              color: "#52525b",
               lineHeight: 1.7,
             }}
           >
@@ -213,7 +213,7 @@ export default function InstrumentList({ updateManualType, instrumentNames }) {
         >
           {unresolvedCount > 0 && (
             <span
-              style={{ fontSize: 11, color: "#c4943a", letterSpacing: 0.4 }}
+              style={{ fontSize: 11, color: "#f97316", letterSpacing: 0.4 }}
             >
               ⚠ {unresolvedCount} unresolved
             </span>
@@ -224,14 +224,14 @@ export default function InstrumentList({ updateManualType, instrumentNames }) {
             style={{
               padding: "7px 14px",
               background: "transparent",
-              border: "1px solid #3d3a28",
+              border: "1px solid rgba(255,255,255,0.07)",
               borderRadius: 3,
-              color: "#a89870",
+              color: "#a1a1aa",
               cursor: "pointer",
               fontSize: 11,
               letterSpacing: 1.2,
               textTransform: "uppercase",
-              fontFamily: "Georgia, serif",
+              fontFamily: "inherit",
             }}
           >
             Refresh
@@ -249,7 +249,7 @@ export default function InstrumentList({ updateManualType, instrumentNames }) {
             padding: "12px 16px",
             marginBottom: 20,
             fontSize: 12,
-            color: "#c4943a",
+            color: "#f97316",
             lineHeight: 1.7,
           }}
         >
@@ -269,7 +269,7 @@ export default function InstrumentList({ updateManualType, instrumentNames }) {
       <div style={{ overflowX: "auto" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
           <thead>
-            <tr style={{ borderBottom: "1px solid #3d3a28" }}>
+            <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
               {[
                 { key: "ticker", label: "Ticker" },
                 { key: "name", label: "Name" },
@@ -285,9 +285,9 @@ export default function InstrumentList({ updateManualType, instrumentNames }) {
                     fontSize: 10,
                     letterSpacing: 1.5,
                     textTransform: "uppercase",
-                    color: "#6a6450",
+                    color: "#52525b",
                     fontWeight: 400,
-                    fontFamily: "Georgia, serif",
+                    fontFamily: "inherit",
                     whiteSpace: "nowrap",
                   }}
                 >
@@ -319,7 +319,7 @@ export default function InstrumentList({ updateManualType, instrumentNames }) {
                       padding: "10px 12px",
                       fontFamily: "'Courier New', monospace",
                       fontSize: 12,
-                      color: isUnresolved ? "#c4943a" : "#d8d4cb",
+                      color: isUnresolved ? "#f97316" : "#d8d4cb",
                       whiteSpace: "nowrap",
                       borderLeft: `3px solid ${
                         isUnresolved ? "#7a4a10" : "transparent"
@@ -351,7 +351,7 @@ export default function InstrumentList({ updateManualType, instrumentNames }) {
                     title={info.name || undefined}
                   >
                     {info.name || (
-                      <span style={{ color: "#3a3830" }}>—</span>
+                      <span style={{ color: "#3f3f46" }}>—</span>
                     )}
                   </td>
 
@@ -370,7 +370,7 @@ export default function InstrumentList({ updateManualType, instrumentNames }) {
                         {info.securityType2 &&
                           info.securityType2 !== info.securityType && (
                             <span
-                              style={{ color: "#4a4535", marginLeft: 5 }}
+                              style={{ color: "#3f3f46", marginLeft: 5 }}
                             >
                               / {info.securityType2}
                             </span>
@@ -378,7 +378,7 @@ export default function InstrumentList({ updateManualType, instrumentNames }) {
                         {info.marketSector && (
                           <span
                             style={{
-                              color: "#4a4535",
+                              color: "#3f3f46",
                               marginLeft: 6,
                               fontSize: 10,
                             }}
@@ -388,7 +388,7 @@ export default function InstrumentList({ updateManualType, instrumentNames }) {
                         )}
                       </>
                     ) : (
-                      <span style={{ color: "#3a3830" }}>—</span>
+                      <span style={{ color: "#3f3f46" }}>—</span>
                     )}
                   </td>
 
@@ -407,7 +407,7 @@ export default function InstrumentList({ updateManualType, instrumentNames }) {
                     ) : (
                       <span
                         style={{
-                          color: isManual ? "#c4943a" : "#7a9868",
+                          color: isManual ? "#f97316" : "#7a9868",
                         }}
                       >
                         {isManual && (
@@ -421,7 +421,7 @@ export default function InstrumentList({ updateManualType, instrumentNames }) {
                         {classification.art}
                         <span
                           style={{
-                            color: "#4a4535",
+                            color: "#3f3f46",
                             marginLeft: 6,
                             fontSize: 10,
                           }}
@@ -450,7 +450,7 @@ export default function InstrumentList({ updateManualType, instrumentNames }) {
         style={{
           marginTop: 16,
           fontSize: 11,
-          color: "#4a4535",
+          color: "#3f3f46",
           letterSpacing: 0.4,
         }}
       >
