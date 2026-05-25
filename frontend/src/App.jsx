@@ -9,6 +9,7 @@ import CloudSyncPanel from "./components/CloudSyncPanel.jsx";
 import InstrumentList from "./components/InstrumentList.jsx";
 import TobGuide from "./components/TobGuide.jsx";
 import Overview from "./components/Overview.jsx";
+import SettingsPage from "./components/SettingsPage.jsx";
 import { useAuth } from "./context/AuthContext.jsx";
 import { db } from "./lib/firebase.js";
 import { fetchKnownInstruments, saveInstruments, resolveAndSaveNewTickers, saveManualInstrumentType } from "./lib/firestoreInstruments.js";
@@ -24,6 +25,7 @@ const TAB = {
   TOB: "tob",
   INSTRUMENTS: "instruments",
   GUIDE: "guide",
+  SETTINGS: "settings",
 };
 
 const HIDEABLE_TABS = [
@@ -38,7 +40,7 @@ function userInitial(user) {
   return name.charAt(0).toUpperCase() || "?";
 }
 
-function TopBar({ activeTab, setActiveTab, hasData, tobEligible, rowCount, hiddenTabs, toggleHiddenTab }) {
+function TopBar({ activeTab, setActiveTab, hasData, tobEligible, rowCount, hiddenTabs }) {
   const { firebaseConfigured, user, authLoading, authError, setAuthError, signInWithGoogle, signOutUser } = useAuth();
 
   const allTabs = [
@@ -101,20 +103,13 @@ function TopBar({ activeTab, setActiveTab, hasData, tobEligible, rowCount, hidde
     </div>
   );
 
-  const settingsItems = (
-    <>
-      <div style={{ padding: "8px 16px 4px", fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", color: "#52525b" }}>Show in nav</div>
-      {HIDEABLE_TABS.map(({ id, label }) => {
-        const visible = !hiddenTabs.has(id);
-        return (
-          <button key={id} type="button" onClick={() => toggleHiddenTab(id)}
-            style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "8px 16px", background: "transparent", border: "none", cursor: "pointer", color: visible ? "#d4d4d8" : "#52525b", fontSize: 13, textAlign: "left" }}>
-            <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 16, height: 16, flexShrink: 0, border: `1px solid ${visible ? "#f59e0b" : "rgba(255,255,255,0.12)"}`, borderRadius: 4, fontSize: 10, background: visible ? "rgba(245,158,11,0.12)" : "transparent", color: visible ? "#f59e0b" : "transparent", transition: "all 0.12s" }}>✓</span>
-            {label}
-          </button>
-        );
-      })}
-    </>
+  const settingsBtn = (close) => (
+    <button type="button"
+      onClick={() => { setActiveTab(TAB.SETTINGS); close(); }}
+      style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "11px 16px", background: activeTab === TAB.SETTINGS ? "rgba(245,158,11,0.08)" : "transparent", border: "none", cursor: "pointer", color: activeTab === TAB.SETTINGS ? "#f59e0b" : "#a1a1aa", fontSize: 13, textAlign: "left" }}>
+      <span style={{ fontSize: 13, lineHeight: 1 }}>⚙</span>
+      Settings
+    </button>
   );
 
   const authItems = !firebaseConfigured ? null : authLoading ? (
@@ -165,7 +160,7 @@ function TopBar({ activeTab, setActiveTab, hasData, tobEligible, rowCount, hidde
               );
             })}
             {sep}
-            {settingsItems}
+            {settingsBtn(() => setMenuOpen(false))}
             {authItems && <>{sep}{authItems}</>}
           </div>
         )}
@@ -204,7 +199,7 @@ function TopBar({ activeTab, setActiveTab, hasData, tobEligible, rowCount, hidde
                 <div style={{ padding: "10px 16px 8px", fontSize: 11, color: "#52525b", borderBottom: "1px solid rgba(255,255,255,0.06)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 240 }}>
                   {user.displayName || user.email}
                 </div>
-                {settingsItems}
+                {settingsBtn(() => setUserMenuOpen(false))}
                 {sep}
                 <button type="button" onClick={() => { signOutUser().catch((e) => setAuthError(e)); setUserMenuOpen(false); }}
                   style={{ display: "block", width: "100%", padding: "9px 16px 11px", background: "transparent", border: "none", textAlign: "left", cursor: "pointer", fontSize: 13, color: "#a1a1aa" }}>
@@ -498,7 +493,6 @@ export default function App() {
         tobEligible={tobEligible}
         rowCount={rowCount}
         hiddenTabs={hiddenTabs}
-        toggleHiddenTab={toggleHiddenTab}
       />
 
       {/* ── Auto-sync toast ── */}
@@ -620,6 +614,10 @@ export default function App() {
         )}
 
         {activeTab === TAB.GUIDE && <TobGuide />}
+
+        {activeTab === TAB.SETTINGS && (
+          <SettingsPage hiddenTabs={hiddenTabs} toggleHiddenTab={toggleHiddenTab} />
+        )}
       </main>
     </div>
   );
