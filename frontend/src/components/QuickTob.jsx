@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { collectTobRowsInScope, calculateTobResult } from "../logic/tobCalculation.js";
+import { collectTobRowsInScope, calculateTobResult, parseRowDate } from "../logic/tobCalculation.js";
 import { makeTransactionKey } from "../logic/tobDeadline.js";
 import { findTypeColumnIndex, findDateColumnIndex, isTobType } from "../logic/transactionFilters.js";
 import { MONTH_NAMES } from "../utils/formatters.js";
@@ -265,6 +265,37 @@ export default function QuickTob({
   const paidCount = allMonthKeys.filter((k) => tobPaidKeys?.has(k)).length;
   const allPaid = allMonthKeys.length > 0 && paidCount === allMonthKeys.length;
 
+  // ── Data freshness ──
+  const { earliestDate, mostRecentDate } = useMemo(() => {
+    if (!hasData || dateColIndex < 0) return { earliestDate: null, mostRecentDate: null };
+    let earliest = null, latest = null;
+    for (const row of effectiveData.rows) {
+      const d = parseRowDate(String(row[dateColIndex] ?? ""));
+      if (!d) continue;
+      if (!earliest || d < earliest) earliest = d;
+      if (!latest || d > latest) latest = d;
+    }
+    return { earliestDate: earliest, mostRecentDate: latest };
+  }, [hasData, effectiveData, dateColIndex]);
+
+  const daysSinceLatest = mostRecentDate
+    ? Math.floor((Date.now() - mostRecentDate.getTime()) / 86_400_000)
+    : null;
+  const isStale = daysSinceLatest !== null && daysSinceLatest > 30;
+
+  function fmtMonthYear(d) {
+    return d.toLocaleDateString("en-GB", { month: "short", year: "numeric" });
+  }
+  function fmtDateShort(d) {
+    return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  }
+  function dateRangeLabel() {
+    if (!earliestDate || !mostRecentDate) return null;
+    const from = fmtMonthYear(earliestDate);
+    const to = fmtMonthYear(mostRecentDate);
+    return from === to ? from : `${from} – ${to}`;
+  }
+
   function isMonthOpen(mKey, monthAllPaid) {
     if (mKey in monthOpenState) return monthOpenState[mKey];
     return !monthAllPaid; // default: open if unpaid, closed if all paid
@@ -275,26 +306,55 @@ export default function QuickTob({
     if (user) {
       if (historyLoading) {
         return (
-          <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 18px", background: "#18181b", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 4, color: "#71717a", fontSize: 13 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 18px", background: "#18181b", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 6, color: "#71717a", fontSize: 13 }}>
             <span style={{ opacity: 0.6 }}>⟳</span> Loading your transaction history from cloud…
           </div>
         );
       }
       if (historyParsed) {
+        const range = dateRangeLabel();
         return (
-          <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "13px 18px", background: "#18181b", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 4 }}>
-            <span style={{ color: "#22c55e", fontSize: 18 }}>✓</span>
-            <span style={{ color: "#d4d4d8", fontSize: 13 }}>Using cloud history — {historyParsed.rows.length.toLocaleString()} transactions</span>
-            <button type="button" onClick={() => { setHistoryLoading(true); reloadHistory().finally(() => setHistoryLoading(false)); }}
-              style={{ marginLeft: "auto", padding: "6px 12px", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 3, background: "transparent", color: "#71717a", fontSize: 11, cursor: "pointer", letterSpacing: 1, textTransform: "uppercase", fontFamily: "inherit" }}>
-              ↻ Refresh
-            </button>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {/* Stats bar */}
+            <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px", background: "#18181b", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 6, flexWrap: "wrap" }}>
+              <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: 22, color: "#fbbf24", lineHeight: 1 }}>
+                  {historyParsed.rows.length.toLocaleString()}
+                </span>
+                <span style={{ fontSize: 13, color: "#a1a1aa" }}>transactions</span>
+                <span style={{ fontSize: 11, color: "#52525b" }}>· ☁ cloud</span>
+                {range && (
+                  <span style={{ fontSize: 11, color: "#52525b" }}>· {range}</span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => { setHistoryLoading(true); reloadHistory().finally(() => setHistoryLoading(false)); }}
+                style={{ flexShrink: 0, padding: "6px 12px", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 3, background: "transparent", color: "#71717a", fontSize: 11, cursor: "pointer", letterSpacing: 1, textTransform: "uppercase", fontFamily: "inherit" }}
+              >
+                ↻ Refresh
+              </button>
+            </div>
+
+            {/* Stale data warning */}
+            {isStale && (
+              <div style={{ padding: "12px 16px", background: "rgba(249,115,22,0.08)", border: "1px solid rgba(249,115,22,0.2)", borderRadius: 6, display: "flex", gap: 12, alignItems: "flex-start" }}>
+                <span style={{ color: "#f97316", fontSize: 14, flexShrink: 0, lineHeight: 1.4 }}>⚠</span>
+                <div>
+                  <div style={{ fontSize: 13, color: "#f97316", marginBottom: 3 }}>Your data might be outdated</div>
+                  <div style={{ fontSize: 11, color: "#a3764a", lineHeight: 1.6 }}>
+                    Most recent transaction is from {fmtDateShort(mostRecentDate)} ({daysSinceLatest} days ago).
+                    Upload a new Revolut statement to include recent trades.
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         );
       }
       return (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ padding: "13px 18px", background: "#18181b", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 4, color: "#71717a", fontSize: 13 }}>
+          <div style={{ padding: "13px 18px", background: "#18181b", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 6, color: "#71717a", fontSize: 13 }}>
             No history loaded yet. Add a CSV below — it will be saved and used for calculation.
           </div>
           <FileDropZone parsed={parsed} fileName={fileName} onFile={onFile} />
@@ -302,15 +362,37 @@ export default function QuickTob({
       );
     }
     return (
-      <div>
-        <div style={{ marginBottom: 10, padding: "10px 14px", background: "#1a1408", border: "1px solid #3a2e10", borderRadius: 3, fontSize: 12, color: "#a89058" }}>
-          Sign in to use your cloud history. For now, calculations use the loaded CSV.
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ padding: "10px 14px", background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)", borderRadius: 6, fontSize: 12, color: "#a89058" }}>
+          Sign in to save history to the cloud. Calculations currently use the loaded CSV.
         </div>
         {parsed ? (
-          <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "13px 18px", background: "#18181b", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 4 }}>
-            <span style={{ color: "#22c55e", fontSize: 18 }}>✓</span>
-            <span style={{ color: "#d4d4d8", fontSize: 13 }}>{parsed.rows.length.toLocaleString()} rows from {fileName}</span>
-          </div>
+          <>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px", background: "#18181b", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 6, flexWrap: "wrap" }}>
+              <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: 22, color: "#fbbf24", lineHeight: 1 }}>
+                  {parsed.rows.length.toLocaleString()}
+                </span>
+                <span style={{ fontSize: 13, color: "#a1a1aa" }}>transactions</span>
+                <span style={{ fontSize: 11, color: "#52525b" }}>· {fileName}</span>
+                {dateRangeLabel() && (
+                  <span style={{ fontSize: 11, color: "#52525b" }}>· {dateRangeLabel()}</span>
+                )}
+              </div>
+            </div>
+            {isStale && (
+              <div style={{ padding: "12px 16px", background: "rgba(249,115,22,0.08)", border: "1px solid rgba(249,115,22,0.2)", borderRadius: 6, display: "flex", gap: 12, alignItems: "flex-start" }}>
+                <span style={{ color: "#f97316", fontSize: 14, flexShrink: 0, lineHeight: 1.4 }}>⚠</span>
+                <div>
+                  <div style={{ fontSize: 13, color: "#f97316", marginBottom: 3 }}>Your data might be outdated</div>
+                  <div style={{ fontSize: 11, color: "#a3764a", lineHeight: 1.6 }}>
+                    Most recent transaction is from {fmtDateShort(mostRecentDate)} ({daysSinceLatest} days ago).
+                    Upload a newer Revolut statement to include recent trades.
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
         ) : (
           <FileDropZone parsed={parsed} fileName={fileName} onFile={onFile} />
         )}
