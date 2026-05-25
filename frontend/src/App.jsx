@@ -5,7 +5,6 @@ import FileDropZone from "./components/FileDropZone.jsx";
 import TransactionsTable from "./components/TransactionsTable.jsx";
 import TobWizard from "./components/TobWizard.jsx";
 import QuickTob from "./components/QuickTob.jsx";
-import AuthBar from "./components/AuthBar.jsx";
 import CloudSyncPanel from "./components/CloudSyncPanel.jsx";
 import InstrumentList from "./components/InstrumentList.jsx";
 import TobGuide from "./components/TobGuide.jsx";
@@ -34,7 +33,14 @@ const HIDEABLE_TABS = [
   { id: "guide",       label: "Guide" },
 ];
 
-function NavBar({ activeTab, setActiveTab, hasData, tobEligible, rowCount, hiddenTabs = new Set() }) {
+function userInitial(user) {
+  const name = user?.displayName || user?.email || "";
+  return name.charAt(0).toUpperCase() || "?";
+}
+
+function TopBar({ activeTab, setActiveTab, hasData, tobEligible, rowCount, hiddenTabs, toggleHiddenTab }) {
+  const { firebaseConfigured, user, authLoading, authError, setAuthError, signInWithGoogle, signOutUser } = useAuth();
+
   const allTabs = [
     { id: TAB.QUICK, label: "Quick TOB" },
     { id: TAB.UPLOAD, label: "Upload" },
@@ -48,7 +54,8 @@ function NavBar({ activeTab, setActiveTab, hasData, tobEligible, rowCount, hidde
 
   const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 640);
   const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef(null);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const barRef = useRef(null);
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 639px)");
@@ -58,101 +65,162 @@ function NavBar({ activeTab, setActiveTab, hasData, tobEligible, rowCount, hidde
   }, []);
 
   useEffect(() => {
-    if (!menuOpen) return;
-    const handler = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false); };
+    if (!menuOpen && !userMenuOpen) return;
+    const handler = (e) => {
+      if (barRef.current && !barRef.current.contains(e.target)) {
+        setMenuOpen(false);
+        setUserMenuOpen(false);
+      }
+    };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, [menuOpen]);
+  }, [menuOpen, userMenuOpen]);
 
-  const activeLabel = tabs.find((t) => t.id === activeTab)?.label ?? "";
+  const headerStyle = {
+    width: "100%", height: 52, boxSizing: "border-box", flexShrink: 0,
+    background: "rgba(9,9,11,0.85)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+    borderBottom: "1px solid rgba(255,255,255,0.07)",
+    display: "flex", alignItems: "center",
+    position: "sticky", top: 0, zIndex: 50,
+  };
+
+  const glassPanel = {
+    position: "absolute", zIndex: 200,
+    background: "rgba(24,24,27,0.97)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+    border: "1px solid rgba(255,255,255,0.1)",
+    boxShadow: "0 12px 40px rgba(0,0,0,0.7)",
+    paddingTop: 4, paddingBottom: 4,
+  };
+
+  const sep = <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "4px 0" }} />;
+
+  const logo = (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, paddingLeft: 20, paddingRight: 16, flexShrink: 0 }}>
+      <div style={{ width: 6, height: 26, borderRadius: 3, background: "linear-gradient(180deg, #fbbf24 0%, #f59e0b 60%, #d97706 100%)" }} />
+      <span style={{ fontSize: 14, fontWeight: 600, color: "#fafafa", letterSpacing: -0.2, whiteSpace: "nowrap" }}>Belgian Tax Calc</span>
+    </div>
+  );
+
+  const settingsItems = (
+    <>
+      <div style={{ padding: "8px 16px 4px", fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", color: "#52525b" }}>Show in nav</div>
+      {HIDEABLE_TABS.map(({ id, label }) => {
+        const visible = !hiddenTabs.has(id);
+        return (
+          <button key={id} type="button" onClick={() => toggleHiddenTab(id)}
+            style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "8px 16px", background: "transparent", border: "none", cursor: "pointer", color: visible ? "#d4d4d8" : "#52525b", fontSize: 13, textAlign: "left" }}>
+            <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 16, height: 16, flexShrink: 0, border: `1px solid ${visible ? "#f59e0b" : "rgba(255,255,255,0.12)"}`, borderRadius: 4, fontSize: 10, background: visible ? "rgba(245,158,11,0.12)" : "transparent", color: visible ? "#f59e0b" : "transparent", transition: "all 0.12s" }}>✓</span>
+            {label}
+          </button>
+        );
+      })}
+    </>
+  );
+
+  const authItems = !firebaseConfigured ? null : authLoading ? (
+    <div style={{ padding: "12px 16px", fontSize: 12, color: "#52525b" }}>Checking session…</div>
+  ) : user ? (
+    <>
+      <div style={{ padding: "10px 16px 6px", fontSize: 11, color: "#52525b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {user.displayName || user.email}
+      </div>
+      <button type="button"
+        onClick={() => { signOutUser().catch((e) => setAuthError(e)); setMenuOpen(false); setUserMenuOpen(false); }}
+        style={{ display: "block", width: "100%", padding: "9px 16px 11px", background: "transparent", border: "none", textAlign: "left", cursor: "pointer", fontSize: 13, color: "#a1a1aa" }}>
+        Sign out
+      </button>
+    </>
+  ) : (
+    <>
+      <button type="button"
+        onClick={() => { signInWithGoogle().catch((e) => setAuthError(e)); setMenuOpen(false); }}
+        style={{ display: "block", width: "100%", padding: "9px 16px 11px", background: "transparent", border: "none", textAlign: "left", cursor: "pointer", fontSize: 13, color: "#f59e0b", fontWeight: 500 }}>
+        Sign in with Google
+      </button>
+      {authError && <div style={{ padding: "0 16px 10px", fontSize: 11, color: "#f87171" }}>{authError.message || String(authError)}</div>}
+    </>
+  );
 
   if (isMobile) {
     return (
-      <nav ref={menuRef} style={{ width: "100%", borderBottom: "1px solid rgba(255,255,255,0.07)", background: "#18181b", position: "relative", zIndex: 40 }}>
-        <button
-          type="button"
-          onClick={() => setMenuOpen((v) => !v)}
-          style={{
-            width: "100%", padding: "13px 20px", background: "transparent", border: "none",
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-            cursor: "pointer", color: "#f59e0b", fontSize: 13, fontWeight: 500,
-          }}
-        >
-          <span>{activeLabel}</span>
-          <span style={{ display: "flex", flexDirection: "column", gap: 4, width: 18 }}>
-            {[0, 1, 2].map((i) => (
-              <span key={i} style={{ display: "block", height: 1.5, borderRadius: 1, background: menuOpen ? "#f59e0b" : "#52525b", transition: "background 0.15s" }} />
-            ))}
-          </span>
+      <header ref={barRef} style={headerStyle}>
+        {logo}
+        <div style={{ flex: 1 }} />
+        <button type="button" onClick={() => setMenuOpen((v) => !v)}
+          style={{ width: 52, height: 52, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5, background: "transparent", border: "none", cursor: "pointer", flexShrink: 0 }}>
+          {[0, 1, 2].map((i) => (
+            <span key={i} style={{ display: "block", width: 18, height: 1.5, borderRadius: 1, background: menuOpen ? "#f59e0b" : "#52525b", transition: "background 0.15s" }} />
+          ))}
         </button>
-
         {menuOpen && (
-          <div style={{
-            position: "absolute", top: "100%", left: 0, right: 0,
-            background: "rgba(24,24,27,0.97)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-            border: "1px solid rgba(255,255,255,0.1)", borderTop: "none",
-            boxShadow: "0 12px 40px rgba(0,0,0,0.7)", zIndex: 100,
-          }}>
+          <div style={{ ...glassPanel, top: 52, left: 0, right: 0, borderRadius: 0, borderLeft: "none", borderRight: "none", borderTop: "none", minWidth: "unset" }}>
             {tabs.map((tab) => {
               const active = activeTab === tab.id;
-              const disabled = tab.disabled;
               return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  disabled={disabled}
-                  onClick={() => { if (!disabled) { setActiveTab(tab.id); setMenuOpen(false); } }}
-                  style={{
-                    display: "block", width: "100%", textAlign: "left",
-                    padding: "13px 20px", background: active ? "rgba(245,158,11,0.08)" : "transparent",
-                    border: "none", borderLeft: `2px solid ${active ? "#f59e0b" : "transparent"}`,
-                    borderBottom: "1px solid rgba(255,255,255,0.05)",
-                    color: active ? "#f59e0b" : disabled ? "#3f3f46" : "#a1a1aa",
-                    cursor: disabled ? "not-allowed" : "pointer", fontSize: 13, fontWeight: active ? 500 : 400,
-                  }}
-                >
+                <button key={tab.id} type="button" disabled={tab.disabled}
+                  onClick={() => { if (!tab.disabled) { setActiveTab(tab.id); setMenuOpen(false); } }}
+                  style={{ display: "block", width: "100%", textAlign: "left", padding: "13px 20px", background: active ? "rgba(245,158,11,0.08)" : "transparent", border: "none", borderLeft: `2px solid ${active ? "#f59e0b" : "transparent"}`, borderBottom: "1px solid rgba(255,255,255,0.04)", color: active ? "#f59e0b" : tab.disabled ? "#3f3f46" : "#a1a1aa", cursor: tab.disabled ? "not-allowed" : "pointer", fontSize: 13, fontWeight: active ? 500 : 400 }}>
                   {tab.label}
                 </button>
               );
             })}
+            {sep}
+            {settingsItems}
+            {authItems && <>{sep}{authItems}</>}
           </div>
         )}
-      </nav>
+      </header>
     );
   }
 
+  // Desktop: logo | tabs (flex) | user avatar
   return (
-    <nav style={{
-      width: "100%", borderBottom: "1px solid rgba(255,255,255,0.07)",
-      background: "#09090b", padding: "0 24px",
-      display: "flex", gap: 0, alignItems: "stretch",
-      overflowX: "auto", overflowY: "hidden",
-    }}>
-      {tabs.map((tab) => {
-        const active = activeTab === tab.id;
-        const disabled = tab.disabled;
-        return (
-          <button
-            key={tab.id}
-            type="button"
-            disabled={disabled}
-            onClick={() => !disabled && setActiveTab(tab.id)}
-            style={{
-              padding: "0 18px", height: 44,
-              background: "transparent", border: "none",
-              borderBottom: `2px solid ${active ? "#f59e0b" : "transparent"}`,
-              color: active ? "#f59e0b" : disabled ? "#3f3f46" : "#71717a",
-              cursor: disabled ? "not-allowed" : "pointer",
-              fontSize: 13, fontWeight: active ? 500 : 400,
-              marginBottom: -1, whiteSpace: "nowrap",
-              transition: "color 0.15s, border-color 0.15s",
-            }}
-          >
-            {tab.label}
+    <header ref={barRef} style={headerStyle}>
+      {logo}
+      <nav style={{ flex: 1, display: "flex", alignItems: "stretch", height: "100%", overflowX: "auto", overflowY: "hidden", minWidth: 0 }}>
+        {tabs.map((tab) => {
+          const active = activeTab === tab.id;
+          return (
+            <button key={tab.id} type="button" disabled={tab.disabled}
+              onClick={() => !tab.disabled && setActiveTab(tab.id)}
+              style={{ padding: "0 18px", height: "100%", background: "transparent", border: "none", borderBottom: `2px solid ${active ? "#f59e0b" : "transparent"}`, color: active ? "#f59e0b" : tab.disabled ? "#3f3f46" : "#71717a", cursor: tab.disabled ? "not-allowed" : "pointer", fontSize: 13, fontWeight: active ? 500 : 400, whiteSpace: "nowrap", transition: "color 0.15s, border-color 0.15s", marginBottom: -1 }}>
+              {tab.label}
+            </button>
+          );
+        })}
+      </nav>
+      {/* User / auth */}
+      <div style={{ position: "relative", padding: "0 16px", flexShrink: 0 }}>
+        {!firebaseConfigured ? null : authLoading ? (
+          <div style={{ fontSize: 12, color: "#52525b" }}>…</div>
+        ) : user ? (
+          <>
+            <button type="button" title={user.displayName || user.email} onClick={() => setUserMenuOpen((v) => !v)}
+              style={{ width: 32, height: 32, borderRadius: "50%", border: `1px solid ${userMenuOpen ? "rgba(245,158,11,0.5)" : "rgba(255,255,255,0.1)"}`, background: userMenuOpen ? "rgba(245,158,11,0.15)" : "rgba(245,158,11,0.08)", color: "#f59e0b", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s" }}>
+              {userInitial(user)}
+            </button>
+            {userMenuOpen && (
+              <div style={{ ...glassPanel, top: "calc(100% + 8px)", right: 0, borderRadius: 10, minWidth: 220 }}>
+                <div style={{ padding: "10px 16px 8px", fontSize: 11, color: "#52525b", borderBottom: "1px solid rgba(255,255,255,0.06)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 240 }}>
+                  {user.displayName || user.email}
+                </div>
+                {settingsItems}
+                {sep}
+                <button type="button" onClick={() => { signOutUser().catch((e) => setAuthError(e)); setUserMenuOpen(false); }}
+                  style={{ display: "block", width: "100%", padding: "9px 16px 11px", background: "transparent", border: "none", textAlign: "left", cursor: "pointer", fontSize: 13, color: "#a1a1aa" }}>
+                  Sign out
+                </button>
+              </div>
+            )}
+          </>
+        ) : (
+          <button type="button" onClick={() => signInWithGoogle().catch((e) => setAuthError(e))}
+            style={{ padding: "6px 14px", borderRadius: 6, fontSize: 13, cursor: "pointer", border: "1px solid rgba(245,158,11,0.35)", background: "rgba(245,158,11,0.1)", color: "#f59e0b", fontWeight: 500, whiteSpace: "nowrap" }}>
+            Sign in
           </button>
-        );
-      })}
-    </nav>
+        )}
+      </div>
+    </header>
   );
 }
 
@@ -177,18 +245,6 @@ export default function App() {
       return new Set(["tob", "instruments"]);
     }
   });
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const settingsRef = useRef(null);
-
-  useEffect(() => {
-    if (!settingsOpen) return;
-    const handler = (e) => {
-      if (settingsRef.current && !settingsRef.current.contains(e.target)) setSettingsOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [settingsOpen]);
-
   useEffect(() => {
     if (hiddenTabs.has(activeTab)) setActiveTab(TAB.QUICK);
   }, [hiddenTabs]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -434,99 +490,15 @@ export default function App() {
   return (
     <div style={{ minHeight: "100vh", background: "#09090b", color: "#fafafa", display: "flex", flexDirection: "column", alignItems: "center", overflowX: "hidden" }}>
 
-      {/* ── Header ── */}
-      <header style={{
-        width: "100%", height: 52, padding: "0 20px",
-        background: "rgba(9,9,11,0.85)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
-        borderBottom: "1px solid rgba(255,255,255,0.07)",
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        position: "sticky", top: 0, zIndex: 50, boxSizing: "border-box",
-        flexShrink: 0,
-      }}>
-        {/* Logo */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{
-            width: 6, height: 26, borderRadius: 3, flexShrink: 0,
-            background: "linear-gradient(180deg, #fbbf24 0%, #f59e0b 60%, #d97706 100%)",
-          }} />
-          <span style={{ fontSize: 14, fontWeight: 600, color: "#fafafa", letterSpacing: -0.2 }}>
-            Belgian Tax Calc
-          </span>
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          {/* Settings gear */}
-          <div ref={settingsRef} style={{ position: "relative" }}>
-            <button
-              type="button"
-              title="Navigation settings"
-              onClick={() => setSettingsOpen((v) => !v)}
-              style={{
-                width: 34, height: 34, padding: 0, border: "1px solid rgba(255,255,255,0.08)",
-                borderRadius: 6, background: settingsOpen ? "rgba(245,158,11,0.1)" : "transparent",
-                color: settingsOpen ? "#f59e0b" : "#71717a",
-                cursor: "pointer", fontSize: 14, lineHeight: 1,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                transition: "color 0.15s, background 0.15s, border-color 0.15s",
-              }}
-            >
-              ⚙
-            </button>
-            {settingsOpen && (
-              <div style={{
-                position: "absolute", right: 0, top: "calc(100% + 8px)",
-                background: "rgba(24,24,27,0.97)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-                border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10,
-                paddingTop: 8, paddingBottom: 8, minWidth: 220,
-                zIndex: 200, boxShadow: "0 12px 40px rgba(0,0,0,0.7)",
-              }}>
-                <div style={{ fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", color: "#52525b", padding: "2px 16px 10px" }}>
-                  Show in navigation
-                </div>
-                {HIDEABLE_TABS.map(({ id, label }) => {
-                  const visible = !hiddenTabs.has(id);
-                  return (
-                    <button
-                      key={id}
-                      type="button"
-                      onClick={() => toggleHiddenTab(id)}
-                      style={{
-                        display: "flex", alignItems: "center", gap: 10,
-                        width: "100%", padding: "9px 16px",
-                        background: "transparent", border: "none",
-                        cursor: "pointer", color: visible ? "#d4d4d8" : "#52525b",
-                        fontSize: 13, textAlign: "left",
-                        transition: "color 0.12s",
-                      }}
-                    >
-                      <span style={{
-                        display: "inline-flex", alignItems: "center", justifyContent: "center",
-                        width: 16, height: 16, flexShrink: 0,
-                        border: `1px solid ${visible ? "#f59e0b" : "rgba(255,255,255,0.12)"}`,
-                        borderRadius: 4, fontSize: 10,
-                        background: visible ? "rgba(245,158,11,0.12)" : "transparent",
-                        color: visible ? "#f59e0b" : "transparent",
-                        transition: "all 0.12s",
-                      }}>✓</span>
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-          <AuthBar />
-        </div>
-      </header>
-
-      {/* ── Nav tabs ── */}
-      <NavBar
+      {/* ── Top bar: logo + nav + auth in one ── */}
+      <TopBar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         hasData={Boolean(displayParsed) || Boolean(historyParsed)}
         tobEligible={tobEligible}
         rowCount={rowCount}
         hiddenTabs={hiddenTabs}
+        toggleHiddenTab={toggleHiddenTab}
       />
 
       {/* ── Auto-sync toast ── */}
